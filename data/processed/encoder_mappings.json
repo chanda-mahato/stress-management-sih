@@ -1,0 +1,43 @@
+{
+  "rank": {
+    "Constable": 0,
+    "Head Constable": 1,
+    "ASI": 2,
+    "Sub-Inspector": 3,
+    "Inspector": 4,
+    "Assistant Commandant": 5,
+    "Commandant": 6
+  },
+  "deployment_theatre": {
+    "Peace / Training Center": 0,
+    "Static Security / VIP": 1,
+    "Border Outpost (LoC/IB)": 2,
+    "North-East (Counter-Insurgency)": 3,
+    "J&K (CI/Ops)": 4,
+    "LWE / Bastar (Anti-Naxal)": 5
+  },
+  "unit_type": {
+    "General Duty (GD)": 0,
+    "Rapid Action Force (RAF)": 1,
+    "VIP Security Wing": 2,
+    "Signal & IT Wing": 3,
+    "Medical & Logistics": 4,
+    "CoBRA Strike Unit": 5
+  },
+  "annual_fitness_grade": {
+    "SHAPE-1": 0,
+    "SHAPE-2": 1,
+    "SHAPE-3": 2,
+    "SHAPE-4": 3
+  },
+  "welfare_risk_level": {
+    "Low": 0,
+    "Medium": 1,
+    "High": 2
+  },
+  "class_weights": {
+    "Low": 0.9921,
+    "Medium": 0.6077,
+    "High": 2.8868
+  }
+}

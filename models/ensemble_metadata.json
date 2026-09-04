@@ -1,0 +1,197 @@
+{
+  "pipeline_revision": 3,
+  "noise_configuration": {
+    "noise_sigma": 2.6,
+    "noise_clip_min": -5.2,
+    "noise_clip_max": 5.2,
+    "r2_ceiling_pct": 85.6,
+    "acc_ceiling_pct": 82.2,
+    "noise_description": "Gaussian sigma=2.6, clipped to [-5.2, +5.2]"
+  },
+  "feature_names": [
+    "age",
+    "service_tenure_years",
+    "distance_from_home_station_km",
+    "num_dependents",
+    "rank_encoded",
+    "unit_type_encoded",
+    "deployment_theatre_encoded",
+    "deployment_duration_days",
+    "posting_transfer_count_last_2yrs",
+    "unit_manning_shortfall_pct",
+    "promotion_stagnation_years",
+    "commute_transit_days",
+    "duty_hours_daily",
+    "rest_hours_daily",
+    "overtime_hours_monthly",
+    "night_shift_frequency_monthly",
+    "consecutive_night_duty_days",
+    "overtime_flag",
+    "daily_workload_score",
+    "training_hours_last_year",
+    "leave_backlog_days",
+    "days_since_last_leave",
+    "leave_days_last_90d",
+    "absenteeism_hours_last_year",
+    "family_separation_months",
+    "conduct_flag",
+    "satisfaction_score",
+    "work_life_balance_score",
+    "stress_score",
+    "sleep_quality_score",
+    "fatigue_score",
+    "social_support_score",
+    "emotional_wellbeing_score",
+    "body_mass_index",
+    "annual_fitness_grade_encoded",
+    "fitness_trend_score",
+    "stagnation_per_tenure_ratio",
+    "transit_separation_burden",
+    "manning_training_ratio",
+    "transfer_tenure_friction",
+    "manning_absenteeism_load",
+    "training_vs_unit_median",
+    "absenteeism_vs_rank_median"
+  ],
+  "raw_feature_names": [
+    "age",
+    "service_tenure_years",
+    "distance_from_home_station_km",
+    "num_dependents",
+    "rank_encoded",
+    "unit_type_encoded",
+    "deployment_theatre_encoded",
+    "deployment_duration_days",
+    "posting_transfer_count_last_2yrs",
+    "unit_manning_shortfall_pct",
+    "promotion_stagnation_years",
+    "commute_transit_days",
+    "duty_hours_daily",
+    "rest_hours_daily",
+    "overtime_hours_monthly",
+    "night_shift_frequency_monthly",
+    "consecutive_night_duty_days",
+    "overtime_flag",
+    "daily_workload_score",
+    "training_hours_last_year",
+    "leave_backlog_days",
+    "days_since_last_leave",
+    "leave_days_last_90d",
+    "absenteeism_hours_last_year",
+    "family_separation_months",
+    "conduct_flag",
+    "satisfaction_score",
+    "work_life_balance_score",
+    "stress_score",
+    "sleep_quality_score",
+    "fatigue_score",
+    "social_support_score",
+    "emotional_wellbeing_score",
+    "body_mass_index",
+    "annual_fitness_grade_encoded",
+    "fitness_trend_score"
+  ],
+  "class_names": [
+    "Low",
+    "Medium",
+    "High"
+  ],
+  "classification_weights": [
+    0.1,
+    0.2,
+    0.7
+  ],
+  "regression_weights": [
+    0.1,
+    0.1,
+    0.8
+  ],
+  "hyperparameter_tuning": {
+    "xgboost": {
+      "max_depth": 8,
+      "learning_rate": 0.08,
+      "min_child_weight": 10
+    },
+    "lightgbm": {
+      "max_depth": 6,
+      "num_leaves": 15,
+      "learning_rate": 0.08,
+      "min_child_samples": 20
+    },
+    "catboost": {
+      "depth": 6,
+      "learning_rate": 0.08,
+      "l2_leaf_reg": 3
+    }
+  },
+  "class_weight_tuning": {
+    "xgboost": {
+      "multiplier": 2.5,
+      "weights": {
+        "0": 0.9920634920634921,
+        "1": 0.6077180188392586,
+        "2": 7.2150072150072155
+      }
+    },
+    "lightgbm": {
+      "multiplier": 1.5,
+      "weights": {
+        "0": 0.9920634920634921,
+        "1": 0.6077180188392586,
+        "2": 4.329004329004329
+      }
+    },
+    "catboost": {
+      "multiplier": 1.0,
+      "weights": [
+        0.9920634920634921,
+        0.6077180188392586,
+        2.886002886002886
+      ]
+    }
+  },
+  "ablation_study": {
+    "classification": {
+      "raw_36_features": {
+        "accuracy": 0.7686666666666667,
+        "macro_f1": 0.7490907051432694,
+        "high_risk_recall": 0.7456647398843931,
+        "high_risk_f1": 0.6861702127659575
+      },
+      "full_43_features": {
+        "accuracy": 0.7646666666666667,
+        "macro_f1": 0.7441314727434807,
+        "high_risk_recall": 0.7283236994219653,
+        "high_risk_f1": 0.6792452830188679
+      }
+    },
+    "regression": {
+      "raw_36_features": {
+        "r2": 0.8402897364921896,
+        "r2_pct": 84.02897364921897,
+        "rmse": 2.6778760027435746,
+        "mae": 2.1519909138035005
+      },
+      "full_43_features": {
+        "r2": 0.8415785813310406,
+        "r2_pct": 84.15785813310406,
+        "rmse": 2.667049028109197,
+        "mae": 2.1406521807935484
+      }
+    }
+  },
+  "individual_models": {
+    "xgboost": {
+      "r2_pct": 81.57985770273626,
+      "accuracy": 0.7706666666666667
+    },
+    "lightgbm": {
+      "r2_pct": 81.81849764667021,
+      "accuracy": 0.7386666666666667
+    },
+    "catboost": {
+      "r2_pct": 84.37070516044628,
+      "accuracy": 0.7706666666666667
+    }
+  }
+}

@@ -1,0 +1,18 @@
+# SIH 2026 PS26186 ML Requirements
+# Core Data & ML (Already Installed)
+numpy>=2.0.0
+pandas>=2.2.0
+scipy>=1.13.0
+scikit-learn>=1.5.0
+joblib>=1.4.0
+matplotlib>=3.9.0
+
+# Optional Tree Boosting & Explainability
+xgboost>=2.1.0
+lightgbm>=4.4.0
+catboost>=1.2.0
+shap>=0.45.0
+seaborn>=0.13.0
+
+# Optional Deep Learning (if using PyTorch)
+# torch>=2.3.0
