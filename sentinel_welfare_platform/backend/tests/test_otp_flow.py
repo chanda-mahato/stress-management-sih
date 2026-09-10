@@ -52,6 +52,16 @@ def test_otp_attempt_limit_and_cooldown():
     assert resp4.status_code == 429
     assert "cooldown" in resp4.json()["detail"].lower()
 
+    # Teardown: Reset cooldown so subsequent development / test runs can use the phone
+    db = SessionLocal()
+    fam = db.query(FamilyMember).filter_by(phone_number_hash=phone_hash).first()
+    if fam:
+        fam.cooldown_until = None
+        fam.otp_attempt_count = 0
+        fam.otp_hash = None
+        db.commit()
+    db.close()
+
 def test_otp_time_expiry():
     """
     REVIEWER FIX #5:

@@ -189,3 +189,59 @@ def submit_emergency_request(
     db.commit()
     db.refresh(emergency_case)
     return {"status": "success", "message": "Emergency request received. Unit Welfare Command has been notified."}
+
+
+class EmergencyRequestExtended(BaseModel):
+    phone_number: Optional[str] = None
+    reason: Optional[str] = None
+    notes: Optional[str] = None
+    contact_phone: Optional[str] = None
+
+@router.get("/status-feed")
+def get_family_status_feed(
+    token_data: dict = Depends(enforce_family_scope),
+    db: Session = Depends(get_db)
+):
+    personnel_id = token_data.get("personnel_id", 1)
+    checkins = db.query(Checkin).filter_by(personnel_id=personnel_id).order_by(Checkin.created_at.desc()).limit(15).all()
+    slots = db.query(CallSlot).filter_by(personnel_id=personnel_id, status="confirmed").all()
+    return {
+        "recent_checkins": [{
+            "id": c.id,
+            "created_at": c.created_at.isoformat() if hasattr(c.created_at, "isoformat") else str(c.created_at),
+            "message": c.message
+        } for c in checkins],
+        "scheduled_slots": [{
+            "id": s.id,
+            "scheduled_at": s.scheduled_at.isoformat() if hasattr(s.scheduled_at, "isoformat") else str(s.scheduled_at),
+            "slot_window_desc": s.slot_window_desc,
+            "duration_minutes": s.duration_minutes,
+            "status": s.status
+        } for s in slots]
+    }
+
+@router.post("/emergency-request")
+def submit_emergency_request_alias(
+    req: EmergencyRequestExtended,
+    token_data: dict = Depends(enforce_family_scope),
+    db: Session = Depends(get_db)
+):
+    personnel_id = token_data.get("personnel_id", 1)
+    latest_r = db.query(RiskAssessment).filter_by(personnel_id=personnel_id).first()
+    r_id = latest_r.id if latest_r else 1
+    
+    note_text = req.reason or req.notes or "Urgent family welfare inquiry"
+    phone_val = req.contact_phone or req.phone_number or "Family Phone"
+    
+    emergency_case = Case(
+        personnel_id=personnel_id,
+        risk_assessment_id=r_id,
+        status="Acknowledged",
+        assigned_mo_id="MO-EMERGENCY-TRIAGE",
+        clinical_notes=f"EMERGENCY INQUIRY FROM FAMILY: {note_text} (Contact: {phone_val})",
+        action_plan="Immediate Welfare Contact & Verification"
+    )
+    db.add(emergency_case)
+    db.commit()
+    db.refresh(emergency_case)
+    return {"status": "success", "message": "Emergency request received. Unit Medical Officer has been notified."}
