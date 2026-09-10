@@ -94,5 +94,5 @@
 | `personnel_id` | `synthetic_generated` | Unique anonymized personnel identifier (`CRPF-2026xxxx`). |
 | `source_dataset` | `formula_derived` | Originating benchmark source dataset tag. |
 | `wsi_deterministic` | `formula_derived` | Theoretical raw Welfare Stress Index before noise injection. |
-| `wsi_noise_applied` | `formula_derived` | Injected zero-mean Gaussian weak-supervision noise ($\sigma=5.0, [-8.0, +8.0]$). |
+| `wsi_noise_applied` | `formula_derived` | Injected zero-mean Gaussian weak-supervision noise ($\sigma=1.0, [-2.5, +2.5]$). |
 | `wsi_score` | `formula_derived` | Bounded composite index used for categorical risk bucketing. |

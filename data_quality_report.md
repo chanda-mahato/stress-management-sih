@@ -4,8 +4,8 @@
 **Total Records:** 7,500  
 **Total Features:** 47 feature columns (40 base/raw + 7 engineered) + 2 target columns (49 total)  
 **Target Label:** `welfare_risk_level` (Low, Medium, High)  
-**Gaussian Supervision Noise:** $\sigma = 2.6$, clipped to $[-5.2, +5.2]$  
-**Noise Ceilings:** $R^2 \le 85.6\%$, Classification Accuracy \le 82.2\%$  
+**Gaussian Supervision Noise:** $\sigma = 1.0$, clipped to $[-2.5, +2.5]$  
+**Noise Ceilings:** $R^2 \le 95.2\%$, Classification Accuracy $\le 92.5\%$  
 
 ---
 

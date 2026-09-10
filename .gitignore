@@ -46,3 +46,15 @@ catboost_info/
 # Archives
 *.zip
 
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+
+# Databases & Test Caches
+*.db
+*.sqlite
+*.sqlite3
+.pytest_cache/
+.ipynb_checkpoints/

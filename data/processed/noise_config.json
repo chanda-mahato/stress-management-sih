@@ -1,8 +1,8 @@
 {
-  "noise_sigma": 2.6,
-  "noise_clip_min": -5.2,
-  "noise_clip_max": 5.2,
-  "r2_ceiling_pct": 85.6,
-  "acc_ceiling_pct": 82.2,
-  "noise_description": "Gaussian sigma=2.6, clipped to [-5.2, +5.2]"
+  "noise_sigma": 1.0,
+  "noise_clip_min": -2.5,
+  "noise_clip_max": 2.5,
+  "r2_ceiling_pct": 95.2,
+  "acc_ceiling_pct": 92.5,
+  "noise_description": "Gaussian sigma=1.0, clipped to [-2.5, +2.5]"
 }

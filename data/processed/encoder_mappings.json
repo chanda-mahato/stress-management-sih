@@ -36,8 +36,8 @@
     "High": 2
   },
   "class_weights": {
-    "Low": 0.9921,
-    "Medium": 0.6077,
-    "High": 2.8868
+    "Low": 1.288,
+    "Medium": 0.6603,
+    "High": 1.41
   }
 }

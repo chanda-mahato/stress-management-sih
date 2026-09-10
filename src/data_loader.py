@@ -10,8 +10,14 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_PATH = os.path.join(BASE_DIR, 'final_training_dataset.csv')
-AUDIT_PATH = os.path.join(BASE_DIR, 'final_training_dataset_audit_trail.csv')
+PROCESSED_DATA_PATH = os.path.join(BASE_DIR, 'data', 'processed', 'final_training_dataset.csv')
+ROOT_DATA_PATH = os.path.join(BASE_DIR, 'final_training_dataset.csv')
+DATA_PATH = PROCESSED_DATA_PATH if os.path.exists(PROCESSED_DATA_PATH) else ROOT_DATA_PATH
+
+PROCESSED_AUDIT_PATH = os.path.join(BASE_DIR, 'data', 'processed', 'final_training_dataset_audit_trail.csv')
+ROOT_AUDIT_PATH = os.path.join(BASE_DIR, 'final_training_dataset_audit_trail.csv')
+AUDIT_PATH = PROCESSED_AUDIT_PATH if os.path.exists(PROCESSED_AUDIT_PATH) else ROOT_AUDIT_PATH
+
 ENCODER_PATH = os.path.join(BASE_DIR, 'data', 'processed', 'encoder_mappings.json')
 
 DROP_COLUMNS = [
@@ -25,7 +31,15 @@ DROP_COLUMNS = [
     'rank',
     'unit_type',
     'deployment_theatre',
-    'annual_fitness_grade'
+    'annual_fitness_grade',
+    # Path 1: Self-assessment subjective scores excluded from ML training features
+    'stress_score',
+    'satisfaction_score',
+    'sleep_quality_score',
+    'fatigue_score',
+    'social_support_score',
+    'emotional_wellbeing_score',
+    'work_life_balance_score'
 ]
 
 CLASS_NAMES = ['Low', 'Medium', 'High']
@@ -123,8 +137,13 @@ def load_dataset(csv_path=DATA_PATH, raw_only=False):
     df = pd.read_csv(csv_path)
     feature_cols = get_feature_names(df, raw_only=raw_only)
     X = df[feature_cols].copy()
-    y = df['welfare_risk_level_encoded'].copy()
-    y_str = df['welfare_risk_level'].copy()
+    mapping = {'Low': 0, 'Medium': 1, 'High': 2}
+    if 'welfare_risk_level_encoded' in df.columns:
+        y = df['welfare_risk_level_encoded'].copy()
+        y_str = df['welfare_risk_level'].copy() if 'welfare_risk_level' in df.columns else y.map({0: 'Low', 1: 'Medium', 2: 'High'})
+    else:
+        y_str = df['welfare_risk_level'].copy()
+        y = df['welfare_risk_level'].map(mapping).astype(int)
     return X, y, y_str, feature_cols
 
 def get_train_test_data(csv_path=DATA_PATH, test_size=0.20, random_state=42, return_continuous=False, raw_only=False):
@@ -133,7 +152,11 @@ def get_train_test_data(csv_path=DATA_PATH, test_size=0.20, random_state=42, ret
         df = pd.read_csv(audit_csv)
         feature_cols = get_feature_names(df, raw_only=raw_only)
         X = df[feature_cols].copy()
-        y_cls = df['welfare_risk_level_encoded'].copy()
+        mapping = {'Low': 0, 'Medium': 1, 'High': 2}
+        if 'welfare_risk_level_encoded' in df.columns:
+            y_cls = df['welfare_risk_level_encoded'].copy()
+        else:
+            y_cls = df['welfare_risk_level'].map(mapping).astype(int)
         y_wsi = df['wsi_score'].copy() if 'wsi_score' in df.columns else None
         y_det = df['wsi_deterministic'].copy() if 'wsi_deterministic' in df.columns else None
 

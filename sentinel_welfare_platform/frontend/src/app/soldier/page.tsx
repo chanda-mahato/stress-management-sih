@@ -1,0 +1,658 @@
+'use client';
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { 
+  Shield, CheckCircle, Video, MessageSquare, Sliders, ArrowLeft,
+  Calendar, Clock, Heart, Send, Sparkles, AlertTriangle, ShieldCheck,
+  User, CheckCircle2, ChevronRight, PhoneCall, Info, KeyRound, Phone,
+  HeartHandshake, LogOut, UserCheck, RefreshCw, QrCode, Copy, Check
+} from 'lucide-react';
+import { apiFetch } from '@/lib/api';
+import { useLanguage } from '@/context/LanguageContext';
+import { OfflineSyncBanner } from '@/components/OfflineSyncBanner';
+import { BilingualChat } from '@/components/BilingualChat';
+import { P2PCallModal } from '@/components/P2PCallModal';
+import { SoldierSelfAssessmentModal } from '@/components/SoldierSelfAssessmentModal';
+
+export default function SoldierPortal() {
+  const { t, language } = useLanguage();
+
+  // Auth State
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [loginPhone, setLoginPhone] = useState('9876543210');
+  const [loginServiceId, setLoginServiceId] = useState('CRPF-2024-001');
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [demoOtp, setDemoOtp] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
+
+  // Profile & Slots State
+  const [profile, setProfile] = useState<any>(null);
+  const [slots, setSlots] = useState<any[]>([]);
+  const [imOkaySent, setImOkaySent] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [callModalOpen, setCallModalOpen] = useState(false);
+  
+  // Family Registration on Soldier Dashboard
+  const [famName, setFamName] = useState('Smt. Sunita Devi');
+  const [famRelation, setFamRelation] = useState('Wife / Spouse');
+  const [famPhone, setFamPhone] = useState('9876543200');
+  const [famSavedMsg, setFamSavedMsg] = useState('');
+
+  // Self-Check Sliders
+  const [mood, setMood] = useState(4);
+  const [sleep, setSleep] = useState(3);
+  const [fatigue, setFatigue] = useState(3);
+  const [selfCheckSubmitted, setSelfCheckSubmitted] = useState(false);
+  const [assessmentModalOpen, setAssessmentModalOpen] = useState(false);
+  const [assessmentResult, setAssessmentResult] = useState<any>(null);
+
+  const handleRequestOtp = async () => {
+    setAuthError('');
+    setAuthLoading(true);
+    try {
+      const res = await apiFetch('/auth/soldier/request-otp', {
+        method: 'POST',
+        body: JSON.stringify({
+          phone_number: loginPhone,
+          service_id: loginServiceId
+        })
+      });
+      setOtpSent(true);
+      const code = res.demo_otp || '123456';
+      setDemoOtp(code);
+      setOtp(code); // Pre-populate for effortless testing
+    } catch (err: any) {
+      setAuthError(err.message || 'Error requesting OTP.');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    setAuthError('');
+    setAuthLoading(true);
+    try {
+      const res = await apiFetch('/auth/soldier/verify-otp', {
+        method: 'POST',
+        body: JSON.stringify({
+          phone_number: loginPhone,
+          otp: otp || demoOtp || '123456',
+          service_id: loginServiceId
+        })
+      });
+      setIsLoggedIn(true);
+      loadSoldierData();
+    } catch (err: any) {
+      setAuthError(err.message || 'Invalid OTP code entered.');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const loadSoldierData = () => {
+    apiFetch('/soldier/profile?soldier_id=1')
+      .then(data => setProfile(data))
+      .catch(() => setProfile({
+        name: 'Ct. Rajesh Kumar',
+        rank: 'Constable (GD)',
+        unit_type: 'CoBRA Strike Unit (204 Bn)',
+        deployment_theatre: 'LWE / Bastar (Anti-Naxal Sector)',
+        duty_hours_daily: 10,
+        rest_hours_daily: 7,
+        leave_backlog_days: 28
+      }));
+
+    apiFetch('/soldier/call-slots?soldier_id=1')
+      .then(data => setSlots(data))
+      .catch(() => setSlots([
+        {
+          id: 1,
+          scheduled_at: new Date(Date.now() + 3600000).toISOString(),
+          slot_window_desc: 'Evening Rest & Welfare Window (19:00 - 19:20 hrs)',
+          status: 'confirmed',
+          duration_minutes: 20
+        }
+      ]));
+
+    // Load registered family
+    apiFetch('/soldier/family-member?soldier_id=1')
+      .then(data => {
+        if (data.registered) {
+          setFamName(data.name);
+          setFamRelation(data.relationship_type);
+          if (data.phone_number) setFamPhone(data.phone_number);
+        }
+      })
+      .catch(() => {});
+  };
+
+  const handleSaveFamily = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFamSavedMsg('');
+    try {
+      await apiFetch('/soldier/family-member?soldier_id=1', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: famName,
+          relationship_type: famRelation,
+          phone_number: famPhone
+        })
+      });
+      setFamSavedMsg(t('Family member saved successfully.', 'परिवार सदस्य सफलतापूर्वक सुरक्षित किया गया।'));
+    } catch (err: any) {
+      setFamSavedMsg(`Save error: ${err.message}`);
+    }
+  };
+
+  const handleSendImOkay = async () => {
+    try {
+      await apiFetch('/soldier/checkin', {
+        method: 'POST',
+        body: JSON.stringify({
+          soldier_id: 1,
+          message: 'मैं ठीक हूँ, चौकी पर सब सुरक्षित है। (I am safe and all is well.)'
+        })
+      });
+      setImOkaySent(true);
+      setTimeout(() => setImOkaySent(false), 3000);
+    } catch (err) {
+      setImOkaySent(true);
+      setTimeout(() => setImOkaySent(false), 3000);
+    }
+  };
+
+  const handleSelfCheck = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await apiFetch('/soldier/self-check', {
+        method: 'POST',
+        body: JSON.stringify({
+          soldier_id: 1,
+          mood_rating: mood,
+          sleep_hours: sleep,
+          fatigue_level: fatigue
+        })
+      });
+      setSelfCheckSubmitted(true);
+    } catch (err) {
+      setSelfCheckSubmitted(true);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center">
+      <OfflineSyncBanner />
+
+      {/* Sub Header */}
+      <div className="w-full bg-white border-b border-slate-200 px-4 sm:px-6 py-3.5 shadow-2xs">
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
+          <Link 
+            href="/"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#003366] hover:text-[#002244] transition bg-white px-3 py-1.5 rounded-lg border border-slate-300 shadow-2xs"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>{t("Back to MHA Home", "मुख्य पृष्ठ पर वापस")}</span>
+          </Link>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-sky-800 bg-sky-50 px-2.5 py-0.5 rounded-full border border-sky-300">
+              <ShieldCheck className="w-3 h-3 text-sky-600" />
+              <span>{t("OPSEC Safe Personnel Zone", "ऑपसेक सुरक्षित कार्मिक क्षेत्र")}</span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* VIEW 1: PRE-AUTH OTP LOGIN CARD */}
+      {!isLoggedIn ? (
+        <div className="w-full max-w-md px-4 py-10 space-y-6">
+          <div className="gov-card rounded-2xl p-6 sm:p-8 space-y-6 shadow-md border-t-4 border-t-sky-600">
+            <div className="text-center space-y-2">
+              <div className="w-12 h-12 rounded-2xl bg-sky-50 border border-sky-200 flex items-center justify-center text-sky-700 mx-auto">
+                <User className="w-6 h-6" />
+              </div>
+              <h1 className="text-xl font-extrabold text-[#0a2540]">
+                {t("जवान पोर्टल लॉगिन | Soldier Login", "जवान पोर्टल लॉगिन | Soldier Login")}
+              </h1>
+              <p className="text-xs text-slate-500 max-w-xs mx-auto">
+                {t(
+                  "Enter your mobile number and service ID to receive a secure login OTP.",
+                  "सुरक्षित लॉगिन ओटीपी प्राप्त करने हेतु अपना मोबाइल नंबर एवं सर्विस आईडी दर्ज करें।"
+                )}
+              </p>
+            </div>
+
+            {authError && (
+              <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-xs font-semibold">
+                {authError}
+              </div>
+            )}
+
+            {!otpSent ? (
+              <div className="space-y-4 text-xs">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    {t("Soldier Service ID / रेजिमेंटल नंबर:", "जवान सर्विस आईडी / रेजिमेंटल नंबर:")}
+                  </label>
+                  <input
+                    type="text"
+                    value={loginServiceId}
+                    onChange={(e) => setLoginServiceId(e.target.value)}
+                    placeholder="e.g. CRPF-2024-001"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono text-slate-800 focus:ring-2 focus:ring-[#003366]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    {t("Mobile Phone Number (Any 10 Digits):", "मोबाइल फ़ोन नंबर (कोई भी 10 अंक):")}
+                  </label>
+                  <div className="relative">
+                    <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                    <input
+                      type="tel"
+                      value={loginPhone}
+                      onChange={(e) => setLoginPhone(e.target.value)}
+                      placeholder="e.g. 9876543210"
+                      className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono text-slate-800 focus:ring-2 focus:ring-[#003366]"
+                    />
+                  </div>
+                  <span className="block text-[10px] text-slate-500 mt-1">
+                    {t("Enter your personal phone number or test default.", "अपना व्यक्तिगत फ़ोन नंबर दर्ज करें या डिफ़ॉल्ट रहने दें।")}
+                  </span>
+                </div>
+
+                <button
+                  onClick={handleRequestOtp}
+                  disabled={authLoading || loginPhone.length < 10}
+                  className="w-full py-3 bg-[#003366] hover:bg-[#002244] text-white font-bold rounded-xl transition shadow-xs flex items-center justify-center gap-2"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>{t("Request Login OTP / ओटीपी प्राप्त करें", "ओटीपी प्राप्त करें / Request Login OTP")}</span>
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4 text-xs animate-fadeIn">
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 space-y-1">
+                  <div className="font-bold flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>{t("OTP Dispatched to: +91 " + loginPhone, "ओटीपी भेजा गया: +91 " + loginPhone)}</span>
+                  </div>
+                  <div className="text-xs">
+                    {t("Generated Verification Code: ", "प्राप्त सत्यापन कोड: ")}
+                    <strong className="font-mono text-base text-emerald-900 px-2 py-0.5 bg-white rounded border border-emerald-300 ml-1">
+                      {demoOtp || '123456'}
+                    </strong>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    {t("Enter 6-Digit OTP:", "6-अंकीय ओटीपी दर्ज करें:")}
+                  </label>
+                  <div className="relative">
+                    <KeyRound className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                    <input
+                      type="text"
+                      maxLength={6}
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value)}
+                      placeholder={demoOtp || '123456'}
+                      className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono tracking-widest text-center text-base focus:ring-2 focus:ring-sky-600"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleVerifyOtp}
+                  disabled={authLoading}
+                  className="w-full py-3 bg-sky-700 hover:bg-sky-800 text-white font-bold rounded-xl transition shadow-xs flex items-center justify-center gap-2"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>{t("Verify OTP & Open Dashboard", "ओटीपी सत्यापित करें एवं डैशबोर्ड खोलें")}</span>
+                </button>
+
+                <button
+                  onClick={() => setOtpSent(false)}
+                  className="w-full text-center text-[11px] text-slate-500 hover:text-slate-800"
+                >
+                  {t("Change Mobile Number", "मोबाइल नंबर बदलें")}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+
+        /* VIEW 2: AUTHENTICATED SOLDIER DASHBOARD */
+        <div className="w-full max-w-4xl px-4 sm:px-6 py-6 space-y-6">
+          
+          {/* Header Card */}
+          <div className="gov-card rounded-2xl p-5 sm:p-6 border-l-4 border-l-sky-600 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-sky-50 border border-sky-200 flex items-center justify-center text-sky-700 shrink-0">
+                <User className="w-6 h-6" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-[#0a2540]">
+                  {t("नमस्ते, कॉन्स्टेबल राजेश कुमार", "नमस्ते, कॉन्स्टेबल राजेश कुमार (Ct. Rajesh Kumar)")}
+                </h2>
+                <p className="text-xs text-slate-500">
+                  {profile?.unit_type || 'CoBRA Strike Unit (204 Bn)'} • {profile?.deployment_theatre || 'Anti-Naxal Sector'}
+                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-[10px] text-slate-600 font-mono bg-slate-100 px-2 py-0.5 rounded border">
+                    ID: {loginServiceId}
+                  </span>
+                  <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    +91 {loginPhone} ✓
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCallModalOpen(true)}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition"
+              >
+                <Video className="w-4 h-4" />
+                <span>{t("Call Actual Phone Test", "फ़ोन पर वीडियो कॉल टेस्ट")}</span>
+              </button>
+              <button
+                onClick={() => setIsLoggedIn(false)}
+                className="p-2 text-slate-400 hover:text-red-600 rounded-lg hover:bg-slate-100 transition"
+                title={t("Log Out", "लॉग आउट")}
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Action Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+            <button
+              onClick={handleSendImOkay}
+              className="p-4 rounded-xl border bg-emerald-50/80 border-emerald-200 hover:bg-emerald-100/80 transition flex flex-col items-center justify-center gap-1.5"
+            >
+              <HeartHandshake className="w-6 h-6 text-emerald-600" />
+              <span className="text-xs font-bold text-emerald-950">
+                {imOkaySent ? t("✓ Status Dispatched!", "✓ संदेश भेज दिया गया!") : t('Send "I am Okay" Status', '"मैं ठीक हूँ" स्थिति भेजें')}
+              </span>
+              <span className="text-[10px] text-slate-500">
+                {t("Reassures registered family", "पंजीकृत परिवार को तसल्ली देता है")}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setCallModalOpen(true)}
+              className="p-4 rounded-xl border bg-sky-50/80 border-sky-200 hover:bg-sky-100/80 transition flex flex-col items-center justify-center gap-1.5"
+            >
+              <Video className="w-6 h-6 text-sky-700" />
+              <span className="text-xs font-bold text-sky-950">
+                {t("1:1 Video Call Connect", "1:1 वीडियो कॉल संपर्क")}
+              </span>
+              <span className="text-[10px] text-slate-500">
+                {t("Call actual phone or laptop", "मोबाइल फ़ोन या लैपटॉप पर कॉल")}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setChatOpen(true)}
+              className="p-4 rounded-xl border bg-indigo-50/80 border-indigo-200 hover:bg-indigo-100/80 transition flex flex-col items-center justify-center gap-1.5"
+            >
+              <MessageSquare className="w-6 h-6 text-indigo-700" />
+              <span className="text-xs font-bold text-indigo-950">
+                {t("Sahayak Chatbot (सहायक)", "सहायक चैटबॉट (Sahayak AI)")}
+              </span>
+              <span className="text-[10px] text-slate-500">
+                {t("Ephemeral Hindi/English support", "द्विभाषी गोपनीय कल्याण सहायता")}
+              </span>
+            </button>
+          </div>
+
+          {/* FAMILY MEMBER REGISTRATION (IN SOLDIER PORTAL ONLY) */}
+          <div className="gov-card rounded-2xl p-5 sm:p-6 border-t-4 border-t-emerald-600 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div className="flex items-center gap-2">
+                <HeartHandshake className="w-5 h-5 text-emerald-600" />
+                <div>
+                  <h3 className="text-sm font-bold text-[#0a2540]">
+                    {t("Family Member Registration (Next-of-Kin)", "परिवार सदस्य पंजीकरण (निकटतम परिजन)")}
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    {t("Authorize designated relative for Family Portal OTP login and scheduled calls.", "परिवार पोर्टल में ओटीपी लॉगिन एवं वीडियो कॉल हेतु अधिकृत परिजन का विवरण।")}
+                  </p>
+                </div>
+              </div>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                {t("Soldier Controlled Only", "केवल जवान द्वारा नियंत्रित")}
+              </span>
+            </div>
+
+            {famSavedMsg && (
+              <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold rounded-lg">
+                {famSavedMsg}
+              </div>
+            )}
+
+            <form onSubmit={handleSaveFamily} className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  {t("Relative Full Name:", "परिजन का पूरा नाम:")}
+                </label>
+                <input
+                  type="text"
+                  value={famName}
+                  onChange={(e) => setFamName(e.target.value)}
+                  placeholder="e.g. Smt. Sunita Devi"
+                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  {t("Relationship Type:", "जवान से संबंध:")}
+                </label>
+                <select
+                  value={famRelation}
+                  onChange={(e) => setFamRelation(e.target.value)}
+                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800"
+                >
+                  <option value="Wife / Spouse">Wife / Spouse (पत्नी)</option>
+                  <option value="Father">Father (पिता)</option>
+                  <option value="Mother">Mother (माता)</option>
+                  <option value="Son / Daughter">Son / Daughter (पुत्र / पुत्री)</option>
+                  <option value="Brother / Sister">Brother / Sister (भाई / बहन)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  {t("Authorized Mobile Number:", "अधिकृत मोबाइल नंबर:")}
+                </label>
+                <input
+                  type="tel"
+                  value={famPhone}
+                  onChange={(e) => setFamPhone(e.target.value)}
+                  placeholder="e.g. 9876543200"
+                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg font-mono text-slate-800"
+                />
+              </div>
+
+              <div className="sm:col-span-3 flex justify-end">
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-lg text-xs transition flex items-center gap-1.5"
+                >
+                  <UserCheck className="w-3.5 h-3.5" />
+                  <span>{t("Save & Authorize Family Member", "विवरण सुरक्षित करें एवं अधिकृत करें")}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* SCHEDULED CALL SLOTS */}
+          <div className="gov-card rounded-2xl p-5 sm:p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div className="flex items-center gap-2">
+                <Video className="w-5 h-5 text-sky-600" />
+                <h3 className="text-sm font-bold text-[#0a2540]">
+                  {t("Scheduled Rest-Hour Video Slots", "निर्धारित विश्राम वीडियो स्लॉट")}
+                </h3>
+              </div>
+              <span className="text-[10px] text-slate-400">
+                {t("Unit MO Approved", "यूनिट चिकित्सा अधिकारी द्वारा स्वीकृत")}
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              {slots.map(s => (
+                <div key={s.id} className="p-4 bg-sky-50/50 rounded-xl border border-sky-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                  <div>
+                    <div className="font-bold text-sky-950 flex items-center gap-2">
+                      <Clock className="w-3.5 h-3.5 text-sky-700" />
+                      <span>{s.slot_window_desc}</span>
+                    </div>
+                    <div className="text-slate-500 mt-0.5">
+                      {t("Duration: ", "अवधि: ")}<strong>{s.duration_minutes} Mins</strong> • {t("Status: ", "स्थिति: ")}
+                      <span className="text-emerald-700 font-bold uppercase">{s.status}</span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setCallModalOpen(true)}
+                    className="px-4 py-2 bg-[#003366] hover:bg-[#002244] text-white font-bold rounded-lg transition flex items-center justify-center gap-1.5 shrink-0"
+                  >
+                    <Video className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>{t("Join 1:1 Video Call", "वीडियो कॉल शुरू करें")}</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* VOLUNTARY SELF-CHECK & OPERATIONAL READINESS */}
+          <div className="gov-card rounded-2xl p-5 sm:p-6 space-y-5 border-l-4 border-l-sky-700 bg-white shadow-sm">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3.5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-sky-50 border border-sky-200 flex items-center justify-center text-sky-700 shadow-2xs">
+                  <Heart className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-[#0a2540] flex items-center gap-2">
+                    <span>{t("दैनिक स्वास्थ्य एवं सजगता स्व-मूल्यांकन", "Daily Duty Readiness & Well-Being Check")}</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                      {t("Strictly Non-Punitive", "पूर्णतः गैर-दंडात्मक")}
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    {t(
+                      "Confidential reflection on sleep, body tension, alertness & mess appetite. Never asks 'Are you stressed?'",
+                      "नींद, शारीरिक तनाव, सजगता एवं भोजन पर गोपनीय आत्म-चिंतन। किसी दंडात्मक उद्देश्य हेतु नहीं।"
+                    )}
+                  </p>
+                </div>
+              </div>
+              <span className="hidden sm:inline-flex text-[10px] font-semibold px-2.5 py-1 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                {t("Personnel Awareness", "व्यक्तिगत सजगता")}
+              </span>
+            </div>
+
+            {assessmentResult ? (
+              <div className="p-4 bg-emerald-50/70 rounded-xl border border-emerald-300 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-200/80 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                    <div>
+                      <span className="font-bold text-emerald-950 text-xs">
+                        {t("Today's Reflection Recorded", "आज का स्व-मूल्यांकन सफलतापूर्वक दर्ज किया गया")}
+                      </span>
+                      <p className="text-[11px] text-emerald-800">
+                        {t("Calculated Duty Readiness Index: ", "अनुमानित कर्तव्य तत्परता सूचकांक: ")}
+                        <strong className="text-emerald-900 text-sm">{assessmentResult.readiness_index || 85}%</strong>
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setAssessmentModalOpen(true)}
+                    className="px-3 py-1.5 bg-white hover:bg-emerald-100 text-emerald-800 font-bold rounded-lg border border-emerald-400 text-[11px] transition self-start sm:self-auto flex items-center gap-1"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    <span>{t("Update Reflection", "पुनः जांच करें")}</span>
+                  </button>
+                </div>
+
+                {assessmentResult.recommendations && assessmentResult.recommendations.length > 0 && (
+                  <div className="space-y-1.5 pt-1">
+                    <span className="text-[10px] font-bold text-emerald-900 uppercase tracking-wider">
+                      {t("Recommended Self-Care for Duty Window:", "कर्तव्य समय हेतु स्व-देखभाल परामर्श:")}
+                    </span>
+                    <ul className="space-y-1">
+                      {assessmentResult.recommendations.map((rec: string, idx: number) => (
+                        <li key={idx} className="text-[11px] text-emerald-900 flex items-start gap-1.5">
+                          <span className="text-emerald-600 font-bold">•</span>
+                          <span>{rec}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="p-4 bg-sky-50/40 rounded-xl border border-sky-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="font-bold text-[#003366] text-xs flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-sky-600" />
+                    <span>{t("Take 2 Minutes for Your Daily Grounding & Self-Check", "2 मिनट का दैनिक सजगता एवं स्वास्थ्य स्व-मूल्यांकन")}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 leading-relaxed max-w-xl">
+                    {t(
+                      "Review restorative sleep, patrol focus, muscle stiffness, and mess appetite. Helps you monitor your own health and access timely unit MO rest windows without any service stigma.",
+                      "नींद, गश्त सजगता, शारीरिक खिंचाव एवं भोजन पर विचार करें। यह बिना किसी सेवा संबंधी झिझक के आपको बेहतर आराम और स्वास्थ्य बनाए रखने में मदद करता है।"
+                    )}
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setAssessmentModalOpen(true)}
+                  className="px-5 py-2.5 bg-[#003366] hover:bg-[#002244] text-white font-bold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-sm shrink-0"
+                >
+                  <Heart className="w-4 h-4 text-rose-300" />
+                  <span>{t("Start Daily Check", "स्व-मूल्यांकन शुरू करें")}</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+        </div>
+      )}
+
+      {/* Grounded Soldier Self Assessment Modal */}
+      <SoldierSelfAssessmentModal
+        isOpen={assessmentModalOpen}
+        onClose={() => setAssessmentModalOpen(false)}
+        soldierId={1}
+        onAssessmentCompleted={(res) => {
+          setAssessmentResult(res);
+          setSelfCheckSubmitted(true);
+        }}
+      />
+
+      {/* Bilingual Sahayak AI Chat Modal */}
+
+      {/* Bilingual Sahayak AI Chat Modal */}
+      <BilingualChat isOpen={chatOpen} onClose={() => setChatOpen(false)} />
+
+      {/* 1:1 Video Call Modal with Phone Numbers for Testing */}
+      <P2PCallModal
+        isOpen={callModalOpen}
+        onClose={() => setCallModalOpen(false)}
+        callerRole="soldier"
+        initialMyNumber={loginPhone || "9876543210"}
+        initialTargetNumber={famPhone || "9876543200"}
+      />
+    </div>
+  );
+}
