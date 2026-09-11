@@ -13,6 +13,7 @@ import { OfflineSyncBanner } from '@/components/OfflineSyncBanner';
 import { BilingualChat } from '@/components/BilingualChat';
 import { P2PCallModal } from '@/components/P2PCallModal';
 import { SoldierSelfAssessmentModal } from '@/components/SoldierSelfAssessmentModal';
+import { ringtone } from '@/lib/ringtone';
 
 export default function SoldierPortal() {
   const { t, language } = useLanguage();
@@ -39,6 +40,52 @@ export default function SoldierPortal() {
   const [famRelation, setFamRelation] = useState('Wife / Spouse');
   const [famPhone, setFamPhone] = useState('9876543200');
   const [famSavedMsg, setFamSavedMsg] = useState('');
+  const [incomingCall, setIncomingCall] = useState<any>(null);
+
+  // Background poller for incoming family calls
+  useEffect(() => {
+    if (!isLoggedIn && !loginPhone) return;
+    const cleanPhone = loginPhone.replace(/\D/g, '').slice(-10);
+    if (!cleanPhone) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await apiFetch(`/signaling/incoming/${cleanPhone}`);
+        if (res && res.incoming) {
+          if (!incomingCall && !callModalOpen) {
+            setIncomingCall(res);
+            ringtone.startRinging('callee');
+            if (typeof navigator !== 'undefined' && navigator.vibrate) {
+              navigator.vibrate([500, 250, 500, 250, 500]);
+            }
+          }
+        } else {
+          if (incomingCall) {
+            ringtone.stopRinging();
+            setIncomingCall(null);
+          }
+        }
+      } catch (e) {}
+    }, 2500);
+
+    return () => {
+      clearInterval(interval);
+      ringtone.stopRinging();
+    };
+  }, [loginPhone, isLoggedIn, incomingCall, callModalOpen]);
+
+  const handleAcceptIncomingCall = () => {
+    ringtone.stopRinging();
+    setIncomingCall(null);
+    setCallModalOpen(true);
+  };
+
+  const handleDeclineIncomingCall = () => {
+    ringtone.stopRinging();
+    const cleanPhone = loginPhone.replace(/\D/g, '').slice(-10);
+    apiFetch(`/signaling/cancel-ring?target_number=${cleanPhone}`, { method: 'POST' }).catch(() => {});
+    setIncomingCall(null);
+  };
 
   // Self-Check Sliders
   const [mood, setMood] = useState(4);
@@ -646,6 +693,54 @@ export default function SoldierPortal() {
       {/* Bilingual Sahayak AI Chat Modal */}
       <BilingualChat isOpen={chatOpen} onClose={() => setChatOpen(false)} />
 
+      {/* INCOMING VIDEO CALL NOTIFICATION DIALOG FOR SOLDIER */}
+      {incomingCall && (
+        <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
+          <div className="w-full max-w-sm bg-white rounded-3xl p-6 text-center space-y-5 shadow-2xl border-2 border-emerald-500 animate-bounce-short">
+            <div className="w-20 h-20 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto ring-8 ring-emerald-50 animate-pulse">
+              <Phone className="w-10 h-10 animate-wiggle" />
+            </div>
+
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full border border-emerald-300">
+                {t("INCOMING FAMILY VIDEO CALL", "परिवार से वीडियो कॉल")}
+              </span>
+              <h3 className="text-xl font-extrabold text-[#0a2540] pt-1">
+                {incomingCall.caller_name || "Family Member"}
+              </h3>
+              <p className="text-xs text-slate-600 font-mono font-bold">
+                {incomingCall.caller_number?.startsWith('+91') ? incomingCall.caller_number : `+91 ${incomingCall.caller_number}`}
+              </p>
+
+              {/* OPSEC Shield Badge */}
+              <div className="flex items-center justify-center gap-1.5 text-[10px] text-blue-800 bg-blue-50 py-1.5 px-3 rounded-xl border border-blue-200 mt-2">
+                <ShieldCheck className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                <span className="font-semibold">
+                  {t("OPSEC Privacy Shield Active (MHA §6a)", "गोपनीयता शील्ड: सुरक्षित सैन्य संचार (MHA §6a)")}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <button
+                onClick={handleDeclineIncomingCall}
+                className="py-3.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-2xl border border-rose-200 transition"
+              >
+                {t("Decline / अस्वीकार", "अस्वीकार (Decline)")}
+              </button>
+
+              <button
+                onClick={handleAcceptIncomingCall}
+                className="py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-2xl shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-1.5 transition"
+              >
+                <Video className="w-4 h-4 text-white" />
+                <span>{t("Accept / कॉल उठाएं", "कॉल उठाएं (Accept)")}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 1:1 Video Call Modal with Phone Numbers for Testing */}
       <P2PCallModal
         isOpen={callModalOpen}
@@ -654,6 +749,7 @@ export default function SoldierPortal() {
         initialMyNumber={loginPhone || "9876543210"}
         initialTargetNumber={famPhone || "9876543200"}
       />
+
     </div>
   );
 }

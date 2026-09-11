@@ -1,0 +1,61 @@
+name: Sentinel Welfare Platform CI - Automated Test Suite
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  backend-acceptance-tests:
+    name: Backend Acceptance Tests (10/10 Isolated Suite)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: 'sentinel_welfare_platform/backend/requirements.txt'
+
+      - name: Install Backend Dependencies
+        working-directory: sentinel_welfare_platform/backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Pytest Suite (Zero Pre-existing Database & Frontend OPSEC Audit)
+        working-directory: sentinel_welfare_platform/backend
+        env:
+          ENVIRONMENT: development
+          JWT_SECRET: ci_test_jwt_secret_token_hex_32_secure_runner_key
+          TURN_SECRET: ci_test_turn_secret_token_hex_32_secure_runner_key
+        run: |
+          pytest tests/ -v
+
+  frontend-build-verification:
+    name: Frontend Build & Typecheck (Next.js)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'sentinel_welfare_platform/frontend/package.json'
+
+      - name: Install Frontend Dependencies
+        working-directory: sentinel_welfare_platform/frontend
+        run: npm install
+
+      - name: Verify Production Next.js Build
+        working-directory: sentinel_welfare_platform/frontend
+        run: npm run build

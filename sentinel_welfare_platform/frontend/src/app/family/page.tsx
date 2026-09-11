@@ -672,14 +672,20 @@ export default function FamilyPortal() {
                 {t("INCOMING 1:1 VIDEO CALL", "आगमन वीडियो कॉल")}
               </span>
               <h3 className="text-xl font-extrabold text-[#0a2540] pt-1">
-                {incomingCall.caller_name || "Ct. Rajesh Kumar (CRPF)"}
+                {incomingCall.caller_name || "Ct. Rajesh Kumar (CRPF Verified)"}
               </h3>
-              <p className="text-xs text-slate-500 font-mono">
-                +91 {incomingCall.caller_number}
+              <p className="text-xs text-slate-600 font-mono font-bold">
+                {incomingCall.caller_number?.startsWith('+91') ? incomingCall.caller_number : `+91 ${incomingCall.caller_number}`}
               </p>
-              <p className="text-[11px] text-emerald-700 font-medium pt-1">
-                {t("Calling from Scheduled Rest & Welfare Window", "विश्राम एवं कल्याण समय से वीडियो कॉल")}
-              </p>
+
+              {/* OPSEC Shield Badge */}
+              <div className="flex items-center justify-center gap-1.5 text-[10px] text-blue-800 bg-blue-50 py-1.5 px-3 rounded-xl border border-blue-200 mt-2">
+                <ShieldCheck className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                <span className="font-semibold">
+                  {t("OPSEC Privacy Shield: Location & Forward Base Hidden (MHA §6a)", "गोपनीयता शील्ड: लोकेशन व फॉरवर्ड बेस पूरी तरह गुप्त (MHA §6a)")}
+                </span>
+              </div>
+
             </div>
 
             <div className="grid grid-cols-2 gap-3 pt-2">

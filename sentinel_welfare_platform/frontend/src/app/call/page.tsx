@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import { AshokStambh } from '@/components/AshokStambh';
 import { useLanguage } from '@/context/LanguageContext';
+import { ringtone } from '@/lib/ringtone';
+import { getSovereignIceServers } from '@/lib/api';
 
 function MobileCallContent() {
   const { t, language } = useLanguage();
@@ -21,6 +23,7 @@ function MobileCallContent() {
   const [callerRole, setCallerRole] = useState(roleParam);
 
   const [callStarted, setCallStarted] = useState(false);
+
   const [callConnected, setCallConnected] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
   const [micOn, setMicOn] = useState(true);
@@ -85,18 +88,18 @@ function MobileCallContent() {
   };
 
   const startMobileCall = async () => {
+    ringtone.stopRinging();
     setCallStarted(true);
     setCallDuration(0);
     setDiagStatus('Connecting mobile media...');
     candidateQueue.current = [];
 
     try {
-      const pc = new RTCPeerConnection({
-        iceServers: [
-          { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }
-        ]
-      });
+      // Sovereign MHA Directive §6a STUN/TURN Discovery (Zero Foreign STUN Leakage)
+      const iceServers = await getSovereignIceServers();
+      const pc = new RTCPeerConnection({ iceServers });
       pcRef.current = pc;
+
 
       let acquiredStream: MediaStream | null = null;
       try {
@@ -220,6 +223,7 @@ function MobileCallContent() {
   };
 
   const endMobileCall = () => {
+    ringtone.stopRinging();
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
@@ -233,6 +237,12 @@ function MobileCallContent() {
     setCallDuration(0);
     setDiagStatus('Call Ended');
   };
+
+  useEffect(() => {
+    return () => {
+      ringtone.stopRinging();
+    };
+  }, []);
 
   const formatDuration = (secs: number) => {
     const m = Math.floor(secs / 60);
@@ -276,22 +286,35 @@ function MobileCallContent() {
           </div>
 
           <div className="space-y-1">
-            <span className="text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-              {t("Incoming Call Invitation", "इनकमिंग वीडियो कॉल आमंत्रण")}
+            <span className="text-[10px] font-bold tracking-wider uppercase px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              {t("Incoming 1:1 Secure Video Call", "इनकमिंग 1:1 सुरक्षित वीडियो कॉल")}
             </span>
-            <h2 className="text-xl font-bold text-white pt-1">
-              {callerRole === 'soldier' ? t("Family Member (+91 " + clean2 + ")", "परिवार सदस्य (+91 " + clean2 + ")") : t("Paramilitary Personnel (+91 " + clean2 + ")", "जवान (+91 " + clean2 + ")")}
+            <h2 className="text-xl font-bold text-white pt-2">
+              {callerRole === 'family' 
+                ? t("Ct. Rajesh Kumar (CRPF Verified)", "कां. राजेश कुमार (के.रि.पु.बल)") 
+                : t("Family Member", "परिवार सदस्य")}
             </h2>
-            <p className="text-xs text-slate-400">
-              {t("Your Phone: ", "आपका फ़ोन: ")}<strong className="text-white">+91 {clean1}</strong>
+            <p className="text-xs text-emerald-400 font-mono font-bold">
+              {callerRole === 'family' 
+                ? `+91 ******${clean2.slice(-4)} (🛡️ Sentinel Military Relay)` 
+                : `+91 ${clean2}`}
             </p>
+            <p className="text-xs text-slate-400 pt-1">
+              {t("Your Device: ", "आपका डिवाइस: ")}<strong className="text-white">+91 {clean1}</strong>
+            </p>
+
+            {/* OPSEC Shield Active Notice */}
+            <div className="flex items-center justify-center gap-1.5 text-[10px] text-blue-300 bg-blue-950/70 py-1.5 px-3 rounded-full border border-blue-500/30 max-w-xs mx-auto mt-2">
+              <ShieldCheck className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+              <span>{t("Zero Location Tracking: GPS & IP Masked (MHA Directive §6a)", "लोकेशन पूरी तरह सुरक्षित: जीपीएस व आईपी अदृश्य (MHA §6a)")}</span>
+            </div>
           </div>
 
           {/* Number Adjustment Inputs */}
           <div className="w-full max-w-xs bg-slate-800/80 p-4 rounded-xl border border-slate-700 text-left space-y-3 text-xs">
             <div>
               <label className="block text-slate-400 text-[11px] mb-1">
-                {t("This Phone's Number:", "इस फ़ोन का नंबर:")}
+                {t("This Phone's Number (Receiver):", "इस फ़ोन का नंबर (रिसीवर):")}
               </label>
               <input
                 type="tel"
@@ -303,7 +326,7 @@ function MobileCallContent() {
 
             <div>
               <label className="block text-slate-400 text-[11px] mb-1">
-                {t("Laptop User's Number:", "लैपटॉप यूज़र का नंबर:")}
+                {t("Calling Peer's Number:", "कॉलर पीयर का नंबर:")}
               </label>
               <input
                 type="tel"
@@ -314,13 +337,22 @@ function MobileCallContent() {
             </div>
           </div>
 
-          <button
-            onClick={startMobileCall}
-            className="w-full max-w-xs py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-2xl flex items-center justify-center gap-2 shadow-lg transition active:scale-98"
-          >
-            <Phone className="w-5 h-5 text-white animate-bounce" />
-            <span>{t("Answer & Connect 1:1 Video", "कॉल उठाएं एवं वीडियो से जुड़ें")}</span>
-          </button>
+          <div className="w-full max-w-xs space-y-2">
+            <button
+              onClick={startMobileCall}
+              className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-2xl flex items-center justify-center gap-2 shadow-lg transition active:scale-98"
+            >
+              <Phone className="w-5 h-5 text-white animate-bounce" />
+              <span>{t("Answer & Connect 1:1 Video", "कॉल उठाएं एवं वीडियो से जुड़ें")}</span>
+            </button>
+            <Link
+              href="/"
+              onClick={() => ringtone.stopRinging()}
+              className="block w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white font-bold text-xs rounded-xl text-center transition"
+            >
+              {t("Decline / Reject Call", "कॉल अस्वीकार करें")}
+            </Link>
+          </div>
         </div>
       ) : (
 

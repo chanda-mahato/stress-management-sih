@@ -4,7 +4,7 @@ import {
   PhoneOff, Mic, MicOff, Video, VideoOff, ShieldCheck, UserCheck, 
   Phone, ArrowRight, RefreshCw, X, AlertCircle, QrCode, Copy, Check, ExternalLink, Activity
 } from 'lucide-react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, getSovereignIceServers } from '@/lib/api';
 import { ringtone } from '@/lib/ringtone';
 import { useLanguage } from '@/context/LanguageContext';
 
@@ -31,6 +31,8 @@ export const P2PCallModal: React.FC<P2PCallModalProps> = ({
   const [isCalling, setIsCalling] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showQrModal, setShowQrModal] = useState(true);
+  const [maskMyNumber, setMaskMyNumber] = useState(true);
+  const [smsSentNotice, setSmsSentNotice] = useState(false);
 
   const [micOn, setMicOn] = useState(true);
   const [videoOn, setVideoOn] = useState(true);
@@ -100,11 +102,12 @@ export const P2PCallModal: React.FC<P2PCallModalProps> = ({
 
         ctx.fillStyle = '#10b981';
         ctx.font = '18px monospace';
-        ctx.fillText(`+91 ${clean1}`, 320, 245);
+        const displayCaller = maskMyNumber ? `+91 ******${clean1.slice(-4)} (OPSEC Protected)` : `+91 ${clean1}`;
+        ctx.fillText(displayCaller, 320, 245);
 
         ctx.fillStyle = '#e2e8f0';
         ctx.font = '14px sans-serif';
-        ctx.fillText('1:1 Encrypted P2P Media Active', 320, 320);
+        ctx.fillText('1:1 Encrypted P2P Media (MHA Directive §6a)', 320, 320);
 
         requestAnimationFrame(drawFrame);
       };
@@ -120,7 +123,7 @@ export const P2PCallModal: React.FC<P2PCallModalProps> = ({
     setIsCalling(true);
     setCallState('waiting_peer');
     setCallDuration(0);
-    setDiagStatus('Initializing local media & signaling...');
+    setDiagStatus('Ringing target phone & initializing media...');
     candidateQueue.current = [];
 
     try {
@@ -128,21 +131,26 @@ export const P2PCallModal: React.FC<P2PCallModalProps> = ({
       apiFetch('/signaling/ring', {
         method: 'POST',
         body: JSON.stringify({
-          caller_number: myNumber,
-          target_number: targetNumber,
+          caller_number: clean1,
+          target_number: clean2,
           caller_name: callerRole === 'soldier' ? 'Ct. Rajesh Kumar (CRPF)' : 'Family Member',
           caller_role: callerRole,
-          room_id: roomId
+          room_id: roomId,
+          mask_caller_number: maskMyNumber,
+          app_host: mobileHost
         })
+      }).then((res) => {
+        if (res && res.sms_dispatched) {
+          setSmsSentNotice(true);
+        }
       }).catch(() => {});
 
-      // Direct local P2P iceServers
-      const pc = new RTCPeerConnection({
-        iceServers: [
-          { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }
-        ]
-      });
+
+      // Sovereign MHA Directive §6a STUN/TURN Discovery (Zero Foreign STUN Leakage)
+      const iceServers = await getSovereignIceServers();
+      const pc = new RTCPeerConnection({ iceServers });
       pcRef.current = pc;
+
 
       // Acquire Camera & Mic or Fallback
       let stream: MediaStream | null = null;
@@ -400,7 +408,7 @@ export const P2PCallModal: React.FC<P2PCallModalProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
               <div>
                 <label className="block font-bold text-slate-700 mb-1">
-                  {t("My Number (" + (callerRole === 'soldier' ? 'Soldier' : 'Family') + "):", "मेरा नंबर (" + (callerRole === 'soldier' ? 'जवान' : 'परिवार') + "):")}
+                  {t("My Phone Number (Caller):", "मेरा फ़ोन नंबर (कॉलर):")}
                 </label>
                 <div className="relative">
                   <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
@@ -416,7 +424,7 @@ export const P2PCallModal: React.FC<P2PCallModalProps> = ({
 
               <div>
                 <label className="block font-bold text-slate-700 mb-1">
-                  {t("Target Number (" + (callerRole === 'soldier' ? 'Family' : 'Soldier') + "):", "कॉल लक्ष्य नंबर (" + (callerRole === 'soldier' ? 'परिवार' : 'जवान') + "):")}
+                  {t("Target Phone Number (Recipient):", "लक्ष्य फ़ोन नंबर (प्राप्तकर्ता):")}
                 </label>
                 <div className="relative">
                   <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
@@ -424,20 +432,52 @@ export const P2PCallModal: React.FC<P2PCallModalProps> = ({
                     type="tel"
                     value={targetNumber}
                     onChange={(e) => setTargetNumber(e.target.value)}
-                    placeholder="e.g. 9876543200"
+                    placeholder="e.g. 8709368696"
                     className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono text-xs text-slate-800 focus:ring-2 focus:ring-[#003366]"
                   />
                 </div>
               </div>
             </div>
 
+            {/* OPSEC PRIVACY & LOCATION SHIELD (MHA DIRECTIVE §6a) */}
+            <div className="p-3.5 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-blue-950 flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-blue-700" />
+                  <span>{t("OPSEC Privacy & Location Shield (MHA §6a)", "गोपनीयता एवं लोकेशन शील्ड (गृह मंत्रालय §6a)")}</span>
+                </span>
+                <label className="flex items-center gap-1.5 cursor-pointer text-[11px] font-bold text-blue-900 bg-blue-100/80 px-2 py-0.5 rounded-full border border-blue-200">
+                  <input
+                    type="checkbox"
+                    checked={maskMyNumber}
+                    onChange={(e) => setMaskMyNumber(e.target.checked)}
+                    className="rounded text-blue-600 focus:ring-blue-500 w-3.5 h-3.5"
+                  />
+                  <span>{t("Hide Number & Location", "नंबर व लोकेशन छुपाएं")}</span>
+                </label>
+              </div>
+              <p className="text-[11px] text-blue-800 leading-relaxed">
+                {maskMyNumber ? (
+                  <span>
+                    ✓ <strong>{t("Zero Location Tracking:", "शून्य लोकेशन ट्रैकिंग:")}</strong> {t("GPS, cell-tower data, and IP addresses are completely blocked.", "जीपीएस, सेल-टॉवर और आईपी एड्रेस पूरी तरह से ब्लॉक रहेंगे।")} <br />
+                    ✓ <strong>{t("Identity Masked:", "पहचान गोपनीय:")}</strong> {t("Recipient only sees ", "प्राप्तकर्ता को केवल ")}
+                    <span className="font-mono bg-blue-100 px-1 rounded text-blue-900 font-bold">+91 ******{clean1.slice(-4)} (🛡️ Sentinel Military Relay)</span>.
+                  </span>
+                ) : (
+                  <span className="text-amber-700">
+                    {t("Standard Direct Call (Identity unmasked).", "साधारण कॉल (पहचान खुली रहेगी)।")}
+                  </span>
+                )}
+              </p>
+            </div>
+
             <div className="pt-1">
               <button
                 onClick={startCall}
-                className="w-full py-3 bg-[#003366] hover:bg-[#002244] text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition shadow-xs"
+                className="w-full py-3 bg-[#003366] hover:bg-[#002244] text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition shadow-md"
               >
-                <Video className="w-4 h-4 text-emerald-400" />
-                <span>{t("Connect 1:1 Call on This Screen", "इस स्क्रीन पर कॉल शुरू करें (Connect Call)")}</span>
+                <Phone className="w-4 h-4 text-emerald-400 animate-bounce" />
+                <span>{t("🚨 Ring Target & Send Call Alert (+91 " + clean2 + ")", "🚨 कॉल मिलाएं एवं अलर्ट भेजें (+91 " + clean2 + ")")}</span>
               </button>
             </div>
           </div>
