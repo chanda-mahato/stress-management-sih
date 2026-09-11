@@ -29,11 +29,24 @@ class Settings(BaseSettings):
     
     # Paths
     BASE_DIR: str = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    MODEL_PATH: str = os.path.join(BASE_DIR, "ml_service", "wsi_production_model.cbm")
-    FEATURE_SCHEMA_PATH: str = os.path.join(BASE_DIR, "ml_service", "feature_schema.json")
+    BACKEND_DIR: str = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    MODEL_PATH: str = os.getenv(
+        "MODEL_PATH",
+        os.path.join(BASE_DIR, "ml_service", "wsi_production_model.cbm")
+        if os.path.exists(os.path.join(BASE_DIR, "ml_service", "wsi_production_model.cbm"))
+        else os.path.join(BACKEND_DIR, "ml_service", "wsi_production_model.cbm")
+    )
+    FEATURE_SCHEMA_PATH: str = os.getenv(
+        "FEATURE_SCHEMA_PATH",
+        os.path.join(BASE_DIR, "ml_service", "feature_schema.json")
+        if os.path.exists(os.path.join(BASE_DIR, "ml_service", "feature_schema.json"))
+        else os.path.join(BACKEND_DIR, "ml_service", "feature_schema.json")
+    )
     
     # Redis (Optional, ephemeral memory fallback active)
     REDIS_URL: str = os.getenv("REDIS_URL", "")
+
 
     @model_validator(mode="after")
     def validate_secrets(self) -> 'Settings':
