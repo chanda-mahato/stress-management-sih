@@ -39,12 +39,40 @@ app.include_router(family.router, prefix=settings.API_V1_STR)
 app.include_router(chatbot.router, prefix=settings.API_V1_STR)
 app.include_router(signaling.router, prefix=settings.API_V1_STR)
 
-@app.get("/health")
-def health_check():
-    return {
-        "status": "healthy",
+from sqlalchemy import text
+from fastapi.responses import JSONResponse
+
+def perform_health_check():
+    db_status = "connected"
+    ml_status = "loaded" if ml_engine.model is not None else "not_loaded"
+    is_healthy = True
+
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+    except Exception as exc:
+        db_status = f"unhealthy: {str(exc)}"
+        is_healthy = False
+
+    if ml_status != "loaded":
+        is_healthy = False
+
+    status_code = 200 if is_healthy else 503
+    payload = {
+        "status": "healthy" if is_healthy else "unhealthy",
         "service": settings.PROJECT_NAME,
         "version": settings.VERSION,
-        "ml_model_loaded": ml_engine.model is not None,
+        "db": db_status,
+        "ml_model": ml_status,
         "features_loaded": len(ml_engine.feature_names)
     }
+    return JSONResponse(status_code=status_code, content=payload)
+
+@app.get("/health")
+def health_check():
+    return perform_health_check()
+
+@app.get("/api/health")
+def api_health_check():
+    return perform_health_check()
+

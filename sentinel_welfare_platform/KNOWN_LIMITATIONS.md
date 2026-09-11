@@ -20,3 +20,15 @@ This document records the design constraints, ethical boundaries, and current en
 - All soldier-family calls are strictly **1:1 peer-to-peer (P2P)**.
 - Media streams flow directly device-to-device with mandatory DTLS-SRTP encryption.
 - Zero server-side media proxying, zero third-party video SDKs, and zero public STUN/TURN servers are permitted.
+
+## 5. Sovereign Hosting, Infrastructure & Cloud Deployment Scope
+- **Defense & Sovereign Compliance**: In accordance with Ministry of Home Affairs (MHA) and CAPF data classification standards, production deployment of the Sentinel Welfare Platform mandates dedicated, **NIC-empanelled (or equivalent sovereign)** cloud infrastructure (MeitY-empanelled Cloud Service Provider, AWS GovCloud (India), or secure on-premise CAPF datacenters).
+- **Inadequacy of Commercial PaaS (Render / Vercel / Railway Free Tiers)**:
+  - **UDP Port Forwarding Deficit**: Commercial PaaS platforms do not support custom UDP port-range forwarding (`49152-49200/udp`) required for Coturn peer-to-peer WebRTC media relay traversal across symmetric NAT firewalls.
+  - **Sovereignty & Security Boundary**: Public shared cloud runtimes cannot guarantee in-country data residency, isolated VPC boundaries, or strict segregation of CAPF personnel stress and deployment telemetry.
+- **Recommended Production Topology**:
+  - **Frontend Web Tier**: Sovereign cloud static storage (with TLS termination) or hardened Nginx container running in DMZ.
+  - **Backend Application Tier**: FastAPI backend containerized on private sovereign VM or managed Kubernetes cluster within an isolated VPC.
+  - **Coturn WebRTC Relay Tier**: Dedicated sovereign Linux VM with elastic public IP, bound strictly to port `3478` (TCP/UDP) and relay range `49152-49200` (UDP), completely isolated from internal database subnets.
+  - **Persistence & Caching Tier**: Managed PostgreSQL with AES-256 encrypted-at-rest volumes and Redis within private database subnets with zero external port exposure.
+

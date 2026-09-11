@@ -143,14 +143,17 @@ function MobileCallContent() {
         }
       };
 
-      // Connect to WebSocket signaling server using host IP
+      // Connect to WebSocket signaling server using host IP and appropriate protocol
       const host = typeof window !== 'undefined' ? window.location.hostname : '127.0.0.1';
-      const ws = new WebSocket(`ws://${host}:8000/api/signaling/ws/${roomId}`);
+      const proto = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsPort = typeof window !== 'undefined' && window.location.port === '3000' ? ':8000' : (window.location.port ? `:${window.location.port}` : '');
+      const ws = new WebSocket(`${proto}//${host}${wsPort}/api/signaling/ws/${roomId}`);
       wsRef.current = ws;
+
 
       ws.onopen = () => {
         setDiagStatus(`Connected to room: ${roomId}`);
-        ws.send(JSON.stringify({ type: 'peer_ready' }));
+        ws.send(JSON.stringify({ type: 'peer_ready', from: clean1, role: callerRole }));
       };
 
       ws.onmessage = async (msg) => {
@@ -158,12 +161,12 @@ function MobileCallContent() {
           const data = JSON.parse(msg.data);
           
           if (data.type === 'peer_joined' || data.type === 'peer_ready') {
-            setDiagStatus('Peer online. Exchanging Offer...');
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            ws.send(JSON.stringify(offer));
+            setDiagStatus('Peer joined room. Waiting for stream handshake...');
           } else if (data.type === 'offer') {
-            setDiagStatus('Received Offer. Replying with Answer...');
+            setDiagStatus('Received Offer from peer. Creating Answer...');
+            if (pc.signalingState !== 'stable') {
+              await pc.setLocalDescription({ type: 'rollback' });
+            }
             await pc.setRemoteDescription(new RTCSessionDescription(data));
 
             while (candidateQueue.current.length > 0) {
@@ -173,25 +176,30 @@ function MobileCallContent() {
 
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
-            ws.send(JSON.stringify(answer));
+            ws.send(JSON.stringify({ type: 'answer', sdp: answer.sdp }));
           } else if (data.type === 'answer') {
             setDiagStatus('Received Answer. Finalizing connection...');
-            await pc.setRemoteDescription(new RTCSessionDescription(data));
+            if (pc.signalingState === 'have-local-offer') {
+              await pc.setRemoteDescription(new RTCSessionDescription(data));
 
-            while (candidateQueue.current.length > 0) {
-              const c = candidateQueue.current.shift();
-              if (c) await pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {});
+              while (candidateQueue.current.length > 0) {
+                const c = candidateQueue.current.shift();
+                if (c) await pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {});
+              }
             }
-          } else if (data.candidate) {
-            if (pc.remoteDescription && pc.remoteDescription.type) {
-              await pc.addIceCandidate(new RTCIceCandidate(data.candidate)).catch(() => {});
-            } else {
-              candidateQueue.current.push(data.candidate);
+          } else if (data.type === 'candidate' || data.candidate) {
+            const cand = data.candidate || data;
+            if (cand && (cand.candidate || cand.sdpMid)) {
+              if (pc.remoteDescription && pc.remoteDescription.type) {
+                await pc.addIceCandidate(new RTCIceCandidate(cand)).catch(() => {});
+              } else {
+                candidateQueue.current.push(cand);
+              }
             }
           } else if (data.type === 'peer_disconnected') {
             setCallConnected(false);
             setHasRemoteVideo(false);
-            setDiagStatus('Laptop peer disconnected.');
+            setDiagStatus('Peer disconnected.');
           }
         } catch (e) {
           console.error('[Mobile Call] Handler error:', e);
@@ -199,10 +207,11 @@ function MobileCallContent() {
       };
 
       pc.onicecandidate = (event) => {
-        if (event.candidate && ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ candidate: event.candidate }));
+        if (event.candidate && wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+          wsRef.current.send(JSON.stringify({ type: 'candidate', candidate: event.candidate }));
         }
       };
+
 
     } catch (err) {
       console.error('[Mobile Call] Error:', err);

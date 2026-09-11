@@ -10,6 +10,7 @@ from app.models import FamilyMember, Checkin, CallSlot, Case, RiskAssessment, Pe
 from app.schemas import RequestOTPRequest, VerifyOTPRequest, EmergencyRequest
 from app.auth import hash_phone_number, hash_otp, create_access_token, enforce_family_scope
 from app.services.sms_gateway import sms_gateway
+from app.services.rate_limiter import rate_limiter
 
 router = APIRouter(prefix="/family", tags=["Family Portal (OPSEC Isolated)"])
 
@@ -30,7 +31,11 @@ def request_family_otp(req: FamilyOTPRequestExtended, db: Session = Depends(get_
     if len(clean_phone) < 10:
         clean_phone = "9876543200"
         
+    # Rate limiting: Max 5 OTP requests per phone per hour (HTTP 429)
+    rate_limiter.enforce_rate_limit(f"family_otp_{clean_phone}", max_requests=5, window_seconds=3600)
+
     phone_hash = hash_phone_number(clean_phone)
+
     family_member = db.query(FamilyMember).filter_by(phone_number_hash=phone_hash).first()
     
     # Auto-register ANY entered phone number for immediate testing
@@ -63,13 +68,19 @@ def request_family_otp(req: FamilyOTPRequestExtended, db: Session = Depends(get_
     family_member.otp_attempt_count = 0
     db.commit()
     
-    sms_gateway.send_otp(clean_phone, otp_code)
+    sms_res = sms_gateway.send_otp(clean_phone, otp_code)
+    msg = f"OTP sent to +91 {clean_phone} (valid for 5 minutes)."
+    if sms_res.get("real_sms_delivered"):
+        msg += " Delivered via live SMS carrier."
+        
     return {
         "status": "success", 
-        "message": f"OTP sent to +91 {clean_phone} (valid for 5 minutes).",
+        "message": msg,
         "demo_otp": otp_code,
-        "phone_number": clean_phone
+        "phone_number": clean_phone,
+        "real_sms": sms_res.get("real_sms_delivered", False)
     }
+
 
 @router.post("/auth/verify-otp")
 def verify_family_otp(req: FamilyVerifyExtended, db: Session = Depends(get_db)):

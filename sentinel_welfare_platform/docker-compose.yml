@@ -10,12 +10,13 @@ services:
     ports:
       - '8000:8000'
     environment:
-      - DATABASE_URL=postgresql://sentinel_admin:REDACTED_SECRET@postgres:5432/sentinel_welfare
-      - REDIS_URL=redis://redis:6379/0
-      - TURN_SECRET=REDACTED_SECRET
-      - TURN_HOST=coturn
-      - TURN_PORT=3478
-      - JWT_SECRET=REDACTED_SECRET
+      - ENVIRONMENT=${ENVIRONMENT}
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - REDIS_URL=${REDIS_URL}
+      - TURN_SECRET=${TURN_SECRET}
+      - TURN_HOST=${TURN_HOST}
+      - TURN_PORT=${TURN_PORT}
+      - JWT_SECRET=${JWT_SECRET}
     depends_on:
       - postgres
       - redis
@@ -26,9 +27,9 @@ services:
     container_name: sentinel_postgres
     restart: unless-stopped
     environment:
-      - POSTGRES_USER=sentinel_admin
-      - POSTGRES_PASSWORD=REDACTED_SECRET
-      - POSTGRES_DB=sentinel_welfare
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
     ports:
       - '5432:5432'
     volumes:
@@ -45,14 +46,23 @@ services:
     image: coturn/coturn:4.6.2
     container_name: sentinel_coturn
     restart: unless-stopped
+    command:
+      - -a
+      - -v
+      - -n
+      - --log-file=stdout
+      - --use-auth-secret
+      - --static-auth-secret=${TURN_SECRET}
+      - --realm=sentinel.local
+      - --min-port=49152
+      - --max-port=49200
     ports:
       - '3478:3478/tcp'
       - '3478:3478/udp'
       - '49152-49200:49152-49200/udp'
-    volumes:
-      - ./coturn/turnserver.conf:/etc/coturn/turnserver.conf:ro
     environment:
-      - TURN_SECRET=REDACTED_SECRET
+      - TURN_SECRET=${TURN_SECRET}
+
 
 volumes:
   pgdata:

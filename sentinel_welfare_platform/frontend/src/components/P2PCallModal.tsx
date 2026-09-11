@@ -58,11 +58,14 @@ export const P2PCallModal: React.FC<P2PCallModalProps> = ({
   const roomId = `call_${sortedRoom}`;
 
   const mobileRole = callerRole === 'soldier' ? 'family' : 'soldier';
+  const detectedIp = '10.20.87.212';
   const mobileHost = typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' 
-    ? window.location.hostname 
-    : '192.168.1.31';
-  const mobileCallUrl = `http://${mobileHost}:3000/call?my=${clean2}&target=${clean1}&role=${mobileRole}`;
+    ? window.location.host 
+    : `${detectedIp}:3000`;
+  const mobileProto = typeof window !== 'undefined' ? window.location.protocol : 'http:';
+  const mobileCallUrl = `${mobileProto}//${mobileHost}/call?my=${clean2}&target=${clean1}&role=${mobileRole}`;
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(mobileCallUrl)}`;
+
 
   const handleCopy = () => {
     navigator.clipboard.writeText(mobileCallUrl);
@@ -166,6 +169,7 @@ export const P2PCallModal: React.FC<P2PCallModalProps> = ({
       pc.ontrack = (event) => {
         if (remoteVideoRef.current && event.streams[0]) {
           remoteVideoRef.current.srcObject = event.streams[0];
+          remoteVideoRef.current.play().catch(() => {});
           setHasRemoteVideo(true);
           ringtone.stopRinging();
           setCallState('connected');
@@ -178,6 +182,7 @@ export const P2PCallModal: React.FC<P2PCallModalProps> = ({
 
       pc.oniceconnectionstatechange = () => {
         if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
+          ringtone.stopRinging();
           setCallState('connected');
           setDiagStatus('P2P ICE Connected');
           if (!timerRef.current) {
@@ -188,12 +193,14 @@ export const P2PCallModal: React.FC<P2PCallModalProps> = ({
 
       // Connect to WebSocket signaling room
       const host = typeof window !== 'undefined' ? window.location.hostname : '127.0.0.1';
-      const ws = new WebSocket(`ws://${host}:8000/api/signaling/ws/${roomId}`);
+      const proto = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsPort = typeof window !== 'undefined' && window.location.port === '3000' ? ':8000' : (window.location.port ? `:${window.location.port}` : '');
+      const ws = new WebSocket(`${proto}//${host}${wsPort}/api/signaling/ws/${roomId}`);
       wsRef.current = ws;
 
       ws.onopen = () => {
         setDiagStatus(`Waiting for peer in room: ${roomId}`);
-        ws.send(JSON.stringify({ type: 'peer_ready' }));
+        ws.send(JSON.stringify({ type: 'peer_ready', from: clean1, role: callerRole }));
       };
 
       ws.onmessage = async (msg) => {
@@ -201,12 +208,17 @@ export const P2PCallModal: React.FC<P2PCallModalProps> = ({
           const data = JSON.parse(msg.data);
 
           if (data.type === 'peer_joined' || data.type === 'peer_ready') {
-            setDiagStatus('Peer detected. Sending WebRTC Offer...');
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            ws.send(JSON.stringify(offer));
+            setDiagStatus('Peer joined. Initializing secure WebRTC offer...');
+            if (pc.signalingState === 'stable') {
+              const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
+              await pc.setLocalDescription(offer);
+              ws.send(JSON.stringify({ type: 'offer', sdp: offer.sdp }));
+            }
           } else if (data.type === 'offer') {
             setDiagStatus('Received Offer. Creating Answer...');
+            if (pc.signalingState !== 'stable') {
+              await pc.setLocalDescription({ type: 'rollback' });
+            }
             await pc.setRemoteDescription(new RTCSessionDescription(data));
             
             // Flush queued candidates
@@ -217,21 +229,26 @@ export const P2PCallModal: React.FC<P2PCallModalProps> = ({
 
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
-            ws.send(JSON.stringify(answer));
+            ws.send(JSON.stringify({ type: 'answer', sdp: answer.sdp }));
           } else if (data.type === 'answer') {
-            setDiagStatus('Received Answer. Finalizing connection...');
-            await pc.setRemoteDescription(new RTCSessionDescription(data));
-            
-            // Flush queued candidates
-            while (candidateQueue.current.length > 0) {
-              const c = candidateQueue.current.shift();
-              if (c) await pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {});
+            setDiagStatus('Received Answer. Establishing live stream...');
+            if (pc.signalingState === 'have-local-offer') {
+              await pc.setRemoteDescription(new RTCSessionDescription(data));
+              
+              // Flush queued candidates
+              while (candidateQueue.current.length > 0) {
+                const c = candidateQueue.current.shift();
+                if (c) await pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {});
+              }
             }
-          } else if (data.candidate) {
-            if (pc.remoteDescription && pc.remoteDescription.type) {
-              await pc.addIceCandidate(new RTCIceCandidate(data.candidate)).catch(() => {});
-            } else {
-              candidateQueue.current.push(data.candidate);
+          } else if (data.type === 'candidate' || data.candidate) {
+            const cand = data.candidate || data;
+            if (cand && (cand.candidate || cand.sdpMid)) {
+              if (pc.remoteDescription && pc.remoteDescription.type) {
+                await pc.addIceCandidate(new RTCIceCandidate(cand)).catch(() => {});
+              } else {
+                candidateQueue.current.push(cand);
+              }
             }
           } else if (data.type === 'peer_disconnected') {
             setCallState('waiting_peer');
@@ -244,10 +261,11 @@ export const P2PCallModal: React.FC<P2PCallModalProps> = ({
       };
 
       pc.onicecandidate = (event) => {
-        if (event.candidate && ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ candidate: event.candidate }));
+        if (event.candidate && wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+          wsRef.current.send(JSON.stringify({ type: 'candidate', candidate: event.candidate }));
         }
       };
+
 
     } catch (err) {
       console.error('[WebRTC] Setup error:', err);
@@ -345,8 +363,9 @@ export const P2PCallModal: React.FC<P2PCallModalProps> = ({
                 <div className="p-3 bg-white rounded-lg border border-slate-200 text-center space-y-2">
                   <img src={qrCodeUrl} alt="Scan QR" className="w-36 h-36 mx-auto rounded border" />
                   <span className="text-[10px] text-slate-500 block font-medium">
-                    {t("Scan with phone camera (192.168.1.31:3000)", "मोबाइल कैमरे से स्कैन करें (192.168.1.31:3000)")}
+                    {t(`Scan with phone camera (${mobileHost})`, `मोबाइल कैमरे से स्कैन करें (${mobileHost})`)}
                   </span>
+
                 </div>
               )}
 

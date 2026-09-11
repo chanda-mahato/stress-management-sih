@@ -91,3 +91,28 @@ def test_otp_time_expiry():
     })
     assert resp.status_code == 400
     assert "expired" in resp.json()["detail"].lower()
+
+def test_otp_request_rate_limit_sliding_window():
+    """
+    ACCEPTANCE TEST:
+    Rate limiter enforces sliding window: max 5 OTP requests per phone per hour.
+    6th request must be rejected with HTTP 429 and Retry-After header.
+    """
+    from app.services.rate_limiter import rate_limiter
+    rate_limit_phone = "9876543290"
+    rate_limiter.reset(f"family_otp_{rate_limit_phone}")
+
+    # 1. First 5 requests within the hour must succeed
+    for _ in range(5):
+        resp = client.post("/api/family/auth/request-otp", json={"phone_number": rate_limit_phone})
+        assert resp.status_code == 200
+
+    # 2. 6th request must be rejected with HTTP 429 and Retry-After header
+    resp6 = client.post("/api/family/auth/request-otp", json={"phone_number": rate_limit_phone})
+    assert resp6.status_code == 429
+    assert "rate limit exceeded" in resp6.json()["detail"].lower()
+    assert "retry-after" in resp6.headers
+
+    # Clean up rate limiter state
+    rate_limiter.reset(f"family_otp_{rate_limit_phone}")
+

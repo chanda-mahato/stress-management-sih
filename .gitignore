@@ -20,12 +20,15 @@ wheels/
 .installed.cfg
 *.egg
 
-# Virtual Environments
+# Virtual Environments & Secrets
 .env
+.env.*
+!.env.example
 .venv
 env/
 venv/
 ENV/
+
 
 # IDE
 .idea/
