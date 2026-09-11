@@ -208,8 +208,13 @@ def get_family_status_feed(
     return {
         "recent_checkins": [{
             "id": c.id,
-            "created_at": c.created_at.isoformat() if hasattr(c.created_at, "isoformat") else str(c.created_at),
-            "message": c.message
+            "created_at": (
+                c.created_at.replace(tzinfo=datetime.timezone.utc).isoformat()
+                if hasattr(c.created_at, "replace") and c.created_at.tzinfo is None
+                else (c.created_at.isoformat() if hasattr(c.created_at, "isoformat") else str(c.created_at))
+            ),
+            "message": c.message,
+            "type": c.type or "im_okay"
         } for c in checkins],
         "scheduled_slots": [{
             "id": s.id,

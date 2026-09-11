@@ -152,12 +152,13 @@ export default function SoldierPortal() {
         method: 'POST',
         body: JSON.stringify({
           soldier_id: 1,
-          message: 'मैं ठीक हूँ, चौकी पर सब सुरक्षित है। (I am safe and all is well.)'
+          message: 'मैं ठीक हूँ, चौकी पर सब सुरक्षित है। (I am okay and doing well at my post.)'
         })
       });
       setImOkaySent(true);
       setTimeout(() => setImOkaySent(false), 3000);
     } catch (err) {
+      console.error('Checkin error:', err);
       setImOkaySent(true);
       setTimeout(() => setImOkaySent(false), 3000);
     }

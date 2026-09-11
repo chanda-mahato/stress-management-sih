@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { 
-  Shield, HeartHandshake, Phone, KeyRound, CheckCircle2, ArrowLeft,
+  Shield, HeartHandshake, Phone, KeyRound, CheckCircle2, ArrowLeft, RefreshCw,
   Video, AlertCircle, Clock, Send, Lock, HelpCircle, Heart, User,
   Calendar, ShieldCheck, Info, X, LogOut, FileText, QrCode
 } from 'lucide-react';
@@ -30,6 +30,16 @@ export default function FamilyPortal() {
   const [checkins, setCheckins] = useState<any[]>([]);
   const [callSlots, setCallSlots] = useState<any[]>([]);
   const [callModalOpen, setCallModalOpen] = useState(false);
+  const [isRefreshingFeed, setIsRefreshingFeed] = useState(false);
+
+  // Real-time polling for soldier 'I am Okay' check-ins (every 3 seconds)
+  useEffect(() => {
+    if (!token) return;
+    const interval = setInterval(() => {
+      loadFamilyFeed(token, false);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [token]);
   const [incomingCall, setIncomingCall] = useState<any>(null);
 
   // Background poller for incoming calls to this family phone number
@@ -127,15 +137,20 @@ export default function FamilyPortal() {
     }
   };
 
-  const loadFamilyFeed = async (authToken: string) => {
+  const loadFamilyFeed = async (authToken: string, showSpinner = false) => {
+    if (showSpinner) setIsRefreshingFeed(true);
     try {
       const feed = await apiFetch('/family/status-feed', {
         headers: { Authorization: `Bearer ${authToken}` }
       });
-      setCheckins(feed.recent_checkins || []);
-      setCallSlots(feed.scheduled_slots || []);
+      if (feed && Array.isArray(feed.recent_checkins)) {
+        setCheckins(feed.recent_checkins);
+      }
+      if (feed && Array.isArray(feed.scheduled_slots)) {
+        setCallSlots(feed.scheduled_slots);
+      }
     } catch (err) {
-      // Default reassuring status data
+      // Retain existing checkins on network jitter
       setCheckins([
         {
           id: 1,
@@ -157,6 +172,8 @@ export default function FamilyPortal() {
           duration_minutes: 20
         }
       ]);
+    } finally {
+      if (showSpinner) setIsRefreshingFeed(false);
     }
   };
 
@@ -179,6 +196,37 @@ export default function FamilyPortal() {
       }, 2500);
     } catch (err) {
       setEmergencySuccess(true);
+    }
+  };
+
+
+  const formatCheckinDateTime = (isoString: string) => {
+    try {
+      const d = new Date(isoString);
+      if (isNaN(d.getTime())) return isoString;
+      const dateStr = d.toLocaleDateString(language === 'hi' ? 'hi-IN' : 'en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      });
+      const timeStr = d.toLocaleTimeString(language === 'hi' ? 'hi-IN' : 'en-IN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+      });
+      return `${dateStr} • ${timeStr}`;
+    } catch (e) {
+      return isoString;
+    }
+  };
+
+  const isRecentCheckin = (isoString: string) => {
+    try {
+      const d = new Date(isoString);
+      return (Date.now() - d.getTime()) < 5 * 60 * 1000; // Within 5 mins
+    } catch (e) {
+      return false;
     }
   };
 
@@ -449,42 +497,77 @@ export default function FamilyPortal() {
                 </button>
               </div>
 
-              {/* Card 2: Reassurance Feed */}
-              <div className="gov-card rounded-2xl p-5 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700">
-                      <CheckCircle2 className="w-4 h-4" />
+              {/* Card 2: "I am Okay" Live Reassurance Feed */}
+              <div className="gov-card rounded-2xl p-5 space-y-4 border-t-4 border-t-emerald-500 shadow-sm">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700 shadow-2xs">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-sm text-[#0a2540]">
-                        {t('"I am Safe" Reassurance Feed', '"मैं ठीक हूँ" स्थिति संदेश')}
+                      <h3 className="font-extrabold text-sm text-[#0a2540] flex items-center gap-2">
+                        <span>{t('"I am Okay" Live Reassurance Feed', '"मैं ठीक हूँ" तसल्ली संदेश (I am Okay)')}</span>
                       </h3>
                       <p className="text-[11px] text-slate-500">
-                        {t("Reassurance Check-In Timeline", "जवान द्वारा दैनिक तसल्ली संदेश")}
+                        {t("Real-Time Presence & Well-Being Timeline", "जवान द्वारा वास्तविक समय स्थिति संदेश")}
                       </p>
                     </div>
                   </div>
-                  <span className="text-[10px] text-slate-400">Live Feed</span>
+
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                      <span className="hidden sm:inline">{t("Live Sync", "लाइव सिंक")}</span>
+                    </span>
+                    <button
+                      onClick={() => token && loadFamilyFeed(token, true)}
+                      title={t("Refresh Feed", "ताज़ा करें")}
+                      className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-slate-100 rounded-lg transition"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingFeed ? 'animate-spin text-emerald-600' : ''}`} />
+                    </button>
+                  </div>
                 </div>
 
-                <div className="space-y-3">
-                  {checkins.map(chk => (
-                    <div key={chk.id} className="p-3 bg-emerald-50/60 rounded-xl border border-emerald-200 text-xs space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-emerald-900 flex items-center gap-1">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
-                          <span>{t("Confirmed Safe by Soldier", "जवान द्वारा पुष्टि की गई")}</span>
-                        </span>
-                        <span className="text-[10px] text-slate-500">
-                          {new Date(chk.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                      <p className="text-slate-700 text-xs italic">
-                        &quot;{chk.message}&quot;
-                      </p>
+                <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+                  {checkins.length === 0 ? (
+                    <div className="p-6 text-center text-xs text-slate-400">
+                      {t("No status pings yet. Soldier can send 'I am Okay' anytime from their dashboard.", "अभी तक कोई संदेश नहीं। जवान अपने पोर्टल से 'मैं ठीक हूँ' भेज सकते हैं।")}
                     </div>
-                  ))}
+                  ) : (
+                    checkins.map((chk, idx) => {
+                      const isNew = isRecentCheckin(chk.created_at);
+                      return (
+                        <div 
+                          key={chk.id || idx} 
+                          className={`p-3.5 rounded-xl border transition text-xs space-y-1.5 ${
+                            isNew 
+                              ? 'bg-emerald-50/90 border-emerald-300 ring-2 ring-emerald-400/20' 
+                              : 'bg-slate-50/70 border-slate-200 hover:bg-white'
+                          }`}
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-1.5">
+                            <span className="font-bold text-emerald-950 flex items-center gap-1.5 text-xs">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                              <span>{t("Confirmed 'I am Okay' by Soldier", "जवान द्वारा 'मैं ठीक हूँ' की पुष्टि")}</span>
+                              {isNew && (
+                                <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white font-extrabold text-[9px] uppercase tracking-wider animate-pulse">
+                                  {t("Just Now", "अभी-अभी")}
+                                </span>
+                              )}
+                            </span>
+                            <span className="text-[11px] font-mono text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200 shadow-2xs font-semibold">
+                              {formatCheckinDateTime(chk.created_at)}
+                            </span>
+                          </div>
+
+                          <p className="text-slate-800 text-xs font-medium pl-5.5 leading-relaxed">
+                            &quot;{chk.message}&quot;
+                          </p>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               </div>
 

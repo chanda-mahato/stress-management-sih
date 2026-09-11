@@ -33,18 +33,36 @@ def get_soldier_profile(soldier_id: int = 1, db: Session = Depends(get_db)):
         "leave_backlog_days": p.leave_backlog_days
     }
 
+class CheckinPayload(BaseModel):
+    soldier_id: Optional[int] = 1
+    message: Optional[str] = "मैं ठीक हूँ, चौकी पर सब सुरक्षित है। (I am okay and all is well.)"
+
+@router.post("/checkin")
 @router.post("/im-okay")
-def send_im_okay_checkin(req: CheckinCreate, soldier_id: int = 1, db: Session = Depends(get_db)):
-    """One-tap 'I am Okay' check-in ping."""
+def send_im_okay_checkin(req: Optional[CheckinPayload] = None, soldier_id: int = 1, db: Session = Depends(get_db)):
+    """One-tap 'I am Okay' check-in ping with precise UTC timestamp."""
+    s_id = (req.soldier_id if req and req.soldier_id else None) or soldier_id
+    msg = (req.message if req and req.message else None) or "मैं ठीक हूँ, चौकी पर सब सुरक्षित है। (I am okay and all is well.)"
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
+
     checkin = Checkin(
-        personnel_id=soldier_id,
+        personnel_id=s_id,
         type="im_okay",
-        message=req.message or "I am safe and doing well."
+        message=msg,
+        created_at=now_utc
     )
     db.add(checkin)
     db.commit()
     db.refresh(checkin)
-    return {"status": "success", "checkin_id": checkin.id, "timestamp": checkin.created_at}
+
+    dt = checkin.created_at
+    ts_iso = dt.replace(tzinfo=datetime.timezone.utc).isoformat() if dt.tzinfo is None else dt.isoformat()
+    return {
+        "status": "success",
+        "checkin_id": checkin.id,
+        "timestamp": ts_iso,
+        "message": checkin.message
+    }
 
 @router.post("/self-check")
 def submit_self_check(req: SelfCheckCreate, soldier_id: int = 1, db: Session = Depends(get_db)):
