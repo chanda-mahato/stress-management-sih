@@ -22,9 +22,37 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+def get_cors_origins() -> list[str]:
+    """
+    Computes explicitly allowed CORS origins.
+    Under MHA security compliance, production & staging environments strictly forbid
+    wildcard '*' origins when credentials are exchanged.
+    """
+    env = (settings.ENVIRONMENT or "development").strip().lower()
+    configured = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
+    
+    if env in ("production", "prod", "staging"):
+        # Explicit production origins only: NEVER permit wildcard '*'
+        filtered = [o for o in configured if o != "*"]
+        if not filtered:
+            # Safe default fallback origins if none explicitly declared
+            return ["http://localhost:3000", "https://localhost:3000"]
+        return filtered
+        
+    # Development / testing mode: permit explicit or standard local dev servers
+    if configured:
+        return [o for o in configured if o != "*"] or [
+            "http://localhost:3000", "http://127.0.0.1:3000", 
+            "http://localhost:8000", "http://127.0.0.1:8000", "http://testserver"
+        ]
+    return [
+        "http://localhost:3000", "http://127.0.0.1:3000", 
+        "http://localhost:8000", "http://127.0.0.1:8000", "http://testserver"
+    ]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=get_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -42,6 +42,12 @@ export default function SoldierPortal() {
   const [famSavedMsg, setFamSavedMsg] = useState('');
   const [incomingCall, setIncomingCall] = useState<any>(null);
 
+  // Welfare Flag & Objection State (MHA §6a Misuse Protection)
+  const [flaggedCase, setFlaggedCase] = useState<any>(null);
+  const [objectionText, setObjectionText] = useState('');
+  const [objectionSubmitting, setObjectionSubmitting] = useState(false);
+  const [objectionMessage, setObjectionMessage] = useState('');
+
   // Background poller for incoming family calls
   useEffect(() => {
     if (!isLoggedIn && !loginPhone) return;
@@ -173,6 +179,44 @@ export default function SoldierPortal() {
         }
       })
       .catch(() => {});
+
+    // Load active flagged case & objection (MHA §6a)
+    apiFetch('/soldier/flagged-case?soldier_id=1')
+      .then(res => {
+        if (res && res.has_case) {
+          setFlaggedCase(res.case);
+          if (res.case.flagged_personnel_objection) {
+            setObjectionText(res.case.flagged_personnel_objection);
+          }
+        } else {
+          setFlaggedCase(null);
+        }
+      })
+      .catch(() => {});
+  };
+
+  const handleSubmitObjection = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!flaggedCase || !objectionText.trim()) return;
+    setObjectionSubmitting(true);
+    setObjectionMessage('');
+    try {
+      const res = await apiFetch(`/soldier/cases/${flaggedCase.id}/objection?soldier_id=1`, {
+        method: 'POST',
+        body: JSON.stringify({ objection_text: objectionText.trim() })
+      });
+      setFlaggedCase((prev: any) => ({
+        ...prev,
+        flagged_personnel_objection: objectionText.trim(),
+        objection_filed_at: res.objection_filed_at || new Date().toISOString()
+      }));
+      setObjectionMessage(t("Representation officially recorded and forwarded to Medical Officer.", "आपत्ति सफलतापूर्वक दर्ज की गई एवं चिकित्सा अधिकारी को प्रेषित की गई।"));
+      setTimeout(() => setObjectionMessage(''), 5000);
+    } catch (err: any) {
+      setObjectionMessage(err.message || 'Error submitting representation.');
+    } finally {
+      setObjectionSubmitting(false);
+    }
   };
 
   const handleSaveFamily = async (e: React.FormEvent) => {
@@ -670,6 +714,112 @@ export default function SoldierPortal() {
                   <Heart className="w-4 h-4 text-rose-300" />
                   <span>{t("Start Daily Check", "स्व-मूल्यांकन शुरू करें")}</span>
                 </button>
+              </div>
+            )}
+          </div>
+
+          {/* STATUTORY GRIEVANCE & REPRESENTATION CHANNEL (MHA §6a ACR FIREWALL) */}
+          <div className="gov-card rounded-2xl p-5 sm:p-6 space-y-4 border-l-4 border-l-amber-600 bg-white shadow-sm">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 shadow-2xs">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-[#0a2540] flex items-center gap-2">
+                    <span>{t("Personnel Representation & Welfare Feedback", "सैनिक अभ्यावेदन एवं कल्याण प्रतिपुष्टि")}</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                      {t("MHA Directive §6a Protection", "गृह मंत्रालय निर्देश §6a संरक्षण")}
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    {t(
+                      "File an official objection or personal perspective on any automated welfare flag. Directly visible to reviewing Medical Officers.",
+                      "सिस्टम द्वारा किसी भी कल्याण फ्लैग पर अपनी आपत्ति या स्पष्टीकरण दर्ज करें। यह सीधे चिकित्सा अधिकारी को दिखाई देगा।"
+                    )}
+                  </p>
+                </div>
+              </div>
+              <span className="hidden sm:inline-flex text-[10px] font-semibold px-2.5 py-1 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                {t("ACR Firewall Protected", "एसीआर फ़ायरवॉल सुरक्षित")}
+              </span>
+            </div>
+
+            {flaggedCase ? (
+              <div className="space-y-3">
+                <div className="p-3 bg-amber-50/80 rounded-xl border border-amber-300 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                  <div>
+                    <div className="font-bold text-amber-950 flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-700" />
+                      <span>{t("Active Welfare Review Case #", "सक्रिय कल्याण समीक्षा केस #")}{flaggedCase.id} ({flaggedCase.status})</span>
+                    </div>
+                    <p className="text-slate-600 text-[11px] mt-0.5">
+                      {t("Prescribed Plan: ", "निर्धारित योजना: ")}<strong>{flaggedCase.action_plan}</strong>
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-mono px-2 py-1 rounded bg-white text-slate-600 border border-amber-200 self-start sm:self-auto">
+                    {t("Created:", "दिनांक:")} {new Date(flaggedCase.created_at).toLocaleDateString()}
+                  </span>
+                </div>
+
+                {flaggedCase.flagged_personnel_objection && (
+                  <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-1">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="font-bold text-slate-800">{t("Your Current Objection on File:", "वर्तमान में दर्ज आपकी आपत्ति:")}</span>
+                      {flaggedCase.objection_filed_at && (
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          {new Date(flaggedCase.objection_filed_at).toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-700 italic bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                      "{flaggedCase.flagged_personnel_objection}"
+                    </p>
+                  </div>
+                )}
+
+                <form onSubmit={handleSubmitObjection} className="space-y-2 pt-1">
+                  <label className="block text-xs font-bold text-slate-700">
+                    {flaggedCase.flagged_personnel_objection 
+                      ? t("Update / Add to Your Representation:", "अपनी आपत्ति में सुधार या अतिरिक्त विवरण जोड़ें:") 
+                      : t("Register Your Perspective / Objection to Medical Officer:", "चिकित्सा अधिकारी हेतु अपनी आपत्ति या विवरण दर्ज करें:")}
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={objectionText}
+                    onChange={(e) => setObjectionText(e.target.value)}
+                    placeholder={t("e.g. The leave backlog was due to voluntary duty swap for unit operational requirements, not stress...", "उदा. अवकाश संचय यूनिट की परिचालन आवश्यकताओं के तहत स्वेच्छा से ड्यूटी बदलने के कारण था, तनाव के कारण नहीं...")}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:ring-2 focus:ring-amber-500"
+                    required
+                  />
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-slate-400">
+                      {t("Zero career penalty guarantee under MHA §6a", "गृह मंत्रालय §6a के तहत पूर्ण सुरक्षा")}
+                    </span>
+                    <button
+                      type="submit"
+                      disabled={objectionSubmitting}
+                      className="px-4 py-2 bg-amber-700 hover:bg-amber-800 text-white font-bold rounded-xl text-xs transition flex items-center gap-1.5 shadow-xs"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>{objectionSubmitting ? t("Submitting...", "दर्ज हो रहा है...") : t("Submit Formal Objection", "औपचारिक आपत्ति दर्ज करें")}</span>
+                    </button>
+                  </div>
+                </form>
+
+                {objectionMessage && (
+                  <div className="p-2.5 bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-xl text-xs font-bold flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>{objectionMessage}</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="p-4 bg-emerald-50/60 rounded-xl border border-emerald-200 flex items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2 text-emerald-950">
+                  <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>{t("No active high-risk flags on your service record. Your statutory right to representation remains active.", "आपकी सेवा पंजिका पर कोई जोखिम फ्लैग नहीं है। आपत्ति दर्ज करने का आपका अधिकार सुरक्षित है।")}</span>
+                </div>
               </div>
             )}
           </div>

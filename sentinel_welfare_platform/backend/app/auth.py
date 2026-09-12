@@ -40,8 +40,15 @@ def decode_token(token: str) -> dict:
         )
 
 def get_current_user(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> dict:
+    env = (settings.ENVIRONMENT or "development").strip().lower()
     if not credentials:
-        # Return a mock demo admin identity if no token provided in local dev mode
+        if env in ("production", "prod", "staging"):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication token required. Mock identities are disabled in production.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        # Return a mock demo admin identity ONLY in local development / demo mode
         return {"sub": "MO-DR-SHARMA-409", "role": "mo", "name": "Dr. V. Sharma (CMO)"}
     return decode_token(credentials.credentials)
 

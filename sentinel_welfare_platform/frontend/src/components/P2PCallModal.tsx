@@ -60,10 +60,13 @@ export const P2PCallModal: React.FC<P2PCallModalProps> = ({
   const roomId = `call_${sortedRoom}`;
 
   const mobileRole = callerRole === 'soldier' ? 'family' : 'soldier';
-  const detectedIp = '10.20.87.212';
-  const mobileHost = typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' 
-    ? window.location.host 
-    : `${detectedIp}:3000`;
+  const devLanIp = process.env.NEXT_PUBLIC_DEV_LAN_IP;
+  const isLocalDev = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  // In production builds and real deployments, strictly use window.location.host.
+  // LAN-IP fallback is enabled only in local development when NEXT_PUBLIC_DEV_LAN_IP is explicitly set.
+  const mobileHost = typeof window !== 'undefined' 
+    ? (isLocalDev && devLanIp ? `${devLanIp}:3000` : window.location.host) 
+    : 'localhost:3000';
   const mobileProto = typeof window !== 'undefined' ? window.location.protocol : 'http:';
   const mobileCallUrl = `${mobileProto}//${mobileHost}/call?my=${clean2}&target=${clean1}&role=${mobileRole}`;
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(mobileCallUrl)}`;

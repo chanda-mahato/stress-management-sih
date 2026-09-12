@@ -47,6 +47,9 @@ class Settings(BaseSettings):
     # Redis (Optional, ephemeral memory fallback active)
     REDIS_URL: str = os.getenv("REDIS_URL", "")
 
+    # CORS Allowed Origins (Comma-separated URLs, e.g. "https://sentinel.gov.in,http://localhost:3000")
+    # In production, wildcard '*' is strictly rejected.
+    CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "")
 
     @model_validator(mode="after")
     def validate_secrets(self) -> 'Settings':
@@ -61,6 +64,11 @@ class Settings(BaseSettings):
                 raise ValueError(
                     "FATAL: Insecure deployment configuration! TURN_SECRET must be explicitly set to a "
                     "cryptographically secure secret in non-development environments."
+                )
+            if self.CORS_ORIGINS and "*" in [o.strip() for o in self.CORS_ORIGINS.split(",")]:
+                raise ValueError(
+                    "FATAL: Insecure deployment configuration! Wildcard '*' CORS origin is strictly "
+                    "prohibited in production/staging environments under MHA security standards."
                 )
         else:
             if not self.JWT_SECRET:

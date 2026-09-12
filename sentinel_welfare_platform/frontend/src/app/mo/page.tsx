@@ -40,6 +40,7 @@ export default function MedicalOfficerDashboard() {
   const [clinicalNotes, setClinicalNotes] = useState('');
   const [transitioning, setTransitioning] = useState(false);
   const [transitionSuccess, setTransitionSuccess] = useState('');
+  const [caseLogs, setCaseLogs] = useState<any[]>([]);
 
   const handleRequestOtp = async () => {
     setAuthError('');
@@ -108,6 +109,15 @@ export default function MedicalOfficerDashboard() {
       setLoading(false);
     });
   };
+
+  useEffect(() => {
+    if (selectedCase?.id) {
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      apiFetch(`/cases/${selectedCase.id}/access-logs`, { headers })
+        .then(data => setCaseLogs(Array.isArray(data) ? data : []))
+        .catch(() => setCaseLogs([]));
+    }
+  }, [selectedCase?.id, token]);
 
   const handleTransition = async (newStatus: string) => {
     if (!selectedCase) return;
@@ -509,6 +519,32 @@ export default function MedicalOfficerDashboard() {
                     />
                   </div>
 
+                  {/* Flagged Personnel Representation / Objection (MHA Misuse Prevention Policy §6a) */}
+                  <div className={`p-4 rounded-xl border ${selectedCase.flagged_personnel_objection ? 'bg-amber-50/90 border-amber-300' : 'bg-slate-50 border-slate-200'}`}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-2">
+                        <AlertOctagon className={`w-4 h-4 ${selectedCase.flagged_personnel_objection ? 'text-amber-700' : 'text-slate-400'}`} />
+                        <span className="font-bold text-xs text-[#0a2540]">
+                          {t("Flagged Personnel Representation / Objection", "चिन्हित जवान द्वारा दर्ज आपत्ति / अभ्यावेदन")}
+                        </span>
+                      </div>
+                      {selectedCase.objection_filed_at && (
+                        <span className="text-[10px] font-mono text-slate-500">
+                          {t("Filed:", "दर्ज:")} {new Date(selectedCase.objection_filed_at).toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+                    {selectedCase.flagged_personnel_objection ? (
+                      <div className="mt-2 text-xs text-slate-800 bg-white p-3 rounded-lg border border-amber-200 font-sans leading-relaxed">
+                        "{selectedCase.flagged_personnel_objection}"
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-slate-500 italic mt-1">
+                        {t("No formal representation filed by personnel. Flag based on objective unit telemetry.", "जवान द्वारा कोई औपचारिक आपत्ति दर्ज नहीं की गई है।")}
+                      </p>
+                    )}
+                  </div>
+
                   {/* Operational Telemetry Metrics */}
                   <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 grid grid-cols-3 gap-2 text-center text-xs">
                     <div>
@@ -598,6 +634,42 @@ export default function MedicalOfficerDashboard() {
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         <span>{t("Mark Resolved (समाधान)", "Mark Resolved (समाधान)")}</span>
                       </button>
+                    </div>
+
+                    {/* Case Access Audit Trail (Enforcing MHA §6a ACR Firewall) */}
+                    <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2 mt-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                          <Shield className="w-3.5 h-3.5 text-indigo-700" />
+                          {t("Case Access Audit Trail (§6a ACR Firewall Log)", "केस एक्सेस ऑडिट ट्रेल (§6a एसीआर फ़ायरवॉल)")}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          {caseLogs.length} {t("entries", "प्रविष्टियां")}
+                        </span>
+                      </div>
+                      <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                        {caseLogs.length === 0 ? (
+                          <span className="text-[11px] text-slate-400 italic">{t("No access logs recorded yet.", "कोई एक्सेस लॉग अभी तक दर्ज नहीं है।")}</span>
+                        ) : (
+                          caseLogs.map((log: any) => (
+                            <div key={log.id} className="text-[11px] bg-white p-2 rounded border border-slate-200 flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
+                                  log.action === 'status_changed' ? 'bg-blue-100 text-blue-800' :
+                                  log.action === 'notes_added' ? 'bg-amber-100 text-amber-800' :
+                                  'bg-slate-100 text-slate-700'
+                                }`}>
+                                  {log.action}
+                                </span>
+                                <span className="font-mono text-slate-700">{log.accessed_by}</span>
+                              </div>
+                              <span className="text-[10px] text-slate-400">
+                                {new Date(log.accessed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                              </span>
+                            </div>
+                          ))
+                        )}
+                      </div>
                     </div>
                   </div>
 

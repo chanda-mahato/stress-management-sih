@@ -3,11 +3,15 @@
 
 An AI-based welfare monitoring and operational stress early-warning system engineered for the Armed Forces & Central Armed Police Forces (CRPF, BSF, ITBP). Built with a strict **human-in-the-loop** mandate: the AI predicts risk tiers and surfaces explainable drivers, but **never** triggers an automated decision or disciplinary penalty.
 
+> ⚠️ **MHA Reviewer Notice on Governance & Deployment Scope**:  
+> See [GOVERNANCE_AND_DEPLOYMENT_SCOPE.md](GOVERNANCE_AND_DEPLOYMENT_SCOPE.md) for data sovereignty, misuse prevention, and pilot-deployment scope before considering this for any real personnel data.
+
 ---
 
 ## 🏛️ Platform Architecture (Monorepo)
 
-\sentinel_welfare_platform/
+```
+sentinel_welfare_platform/
 ├── ml_service/                       # CatBoost Native CBM Model & 46-Feature Schema
 │   ├── wsi_production_model.cbm      # Deployed production model (no .joblib dependency)
 │   └── feature_schema.json           # Exact 46-feature ordering & schema definition
@@ -16,7 +20,7 @@ An AI-based welfare monitoring and operational stress early-warning system engin
 │   │   ├── auth.py                   # JWT + OTP + Strict OPSEC Scope Enforcement
 │   │   ├── services/                 # ML Engine (SHAP), Ephemeral Chat, Roster Scheduler, Rate Limiter
 │   │   └── routers/                  # ML, Personnel, Cases, Soldier, Family, Chat, Signaling
-│   └── tests/                        # Automated Pytest Suite (9/9 Acceptance Tests Passing, Isolated DB)
+│   └── tests/                        # Automated Pytest Suite (12/12 Acceptance & Governance Tests Passing, Isolated DB)
 ├── frontend/                         # Next.js 14 PWA with 3 Portal Surfaces
 │   └── src/app/
 │       ├── page.tsx                  # Command Portal Switcher & System Gateway
@@ -80,7 +84,7 @@ py -3.13 -m uvicorn app.main:app --port 8000 --reload
 * Interactive API Documentation (Swagger UI): `http://127.0.0.1:8000/docs`
 * Deep Health Check (DB + ML status): `http://127.0.0.1:8000/health`
 
-### 3. Run the Automated Test Suite (9/9 Acceptance Tests Passing)
+### 3. Run the Automated Test Suite (12/12 Acceptance & Governance Tests Passing)
 Tests execute against an isolated test SQLite database without touching development databases:
 ```powershell
 cd backend

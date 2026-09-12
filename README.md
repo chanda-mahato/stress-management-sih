@@ -3,6 +3,9 @@
 ## Overview
 This repository contains the production-grade, mathematically calibrated dataset pipeline, machine learning models, and command triage CLI for **Smart India Hackathon 2026 Problem Statement 26186** (*"AI-Based Predictive Personnel Stress and Welfare Monitoring System for Uniformed Forces"*, Ministry of Home Affairs / CRPF).
 
+> ⚠️ **MHA Reviewer Notice on Governance & Deployment Scope**:  
+> See [GOVERNANCE_AND_DEPLOYMENT_SCOPE.md](GOVERNANCE_AND_DEPLOYMENT_SCOPE.md) for data sovereignty, misuse prevention, and pilot-deployment scope before considering this for any real personnel data.
+
 ---
 
 ## Core System Architecture

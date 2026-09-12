@@ -106,8 +106,29 @@ class Case(Base):
     acknowledged_at = Column(DateTime, nullable=True)
     resolved_at = Column(DateTime, nullable=True)
     
+    flagged_personnel_objection = Column(Text, nullable=True)
+    objection_filed_at = Column(DateTime, nullable=True)
+    
     personnel = relationship("Personnel", back_populates="cases")
     risk_assessment = relationship("RiskAssessment", back_populates="cases")
+    access_logs = relationship("CaseAccessLog", back_populates="case", cascade="all, delete-orphan")
+
+
+class CaseAccessLog(Base):
+    """
+    Audit log for all access to welfare risk cases.
+    Enforces MHA misuse prevention policy (§6a ACR firewall).
+    Tracks every read/view and state modification by admin/MO users or objection filings.
+    """
+    __tablename__ = "case_access_logs"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    case_id = Column(Integer, ForeignKey("cases.id"), nullable=False, index=True)
+    accessed_by = Column(String(100), nullable=False)  # user id/role (e.g. MO-DR-SHARMA-409 or soldier_1)
+    accessed_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False, index=True)
+    action = Column(String(50), nullable=False)        # "viewed" | "status_changed" | "notes_added"
+    
+    case = relationship("Case", back_populates="access_logs")
 
 
 class FamilyMember(Base):

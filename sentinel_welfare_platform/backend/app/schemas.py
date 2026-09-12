@@ -60,6 +60,21 @@ class CaseResponse(BaseModel):
     created_at: datetime.datetime
     acknowledged_at: Optional[datetime.datetime]
     resolved_at: Optional[datetime.datetime]
+    flagged_personnel_objection: Optional[str] = None
+    objection_filed_at: Optional[datetime.datetime] = None
+
+class CaseObjectionRequest(BaseModel):
+    objection_text: str
+
+class CaseAccessLogResponse(BaseModel):
+    id: int
+    case_id: int
+    accessed_by: str
+    accessed_at: datetime.datetime
+    action: str
+
+    class Config:
+        from_attributes = True
 
 class RequestOTPRequest(BaseModel):
     phone_number: str

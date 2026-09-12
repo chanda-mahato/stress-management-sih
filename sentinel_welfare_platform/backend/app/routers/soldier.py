@@ -6,9 +6,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Personnel, Checkin, CallSlot, SoldierSelfCheck, FamilyMember
-from app.schemas import CheckinCreate, SelfCheckCreate
-from app.auth import hash_phone_number
+from app.models import Personnel, Checkin, CallSlot, SoldierSelfCheck, FamilyMember, Case, CaseAccessLog
+from app.schemas import CheckinCreate, SelfCheckCreate, CaseObjectionRequest
+from app.auth import hash_phone_number, enforce_soldier_scope
 
 router = APIRouter(prefix="/soldier", tags=["Soldier Portal"])
 
@@ -160,4 +160,86 @@ def register_soldier_family_member(req: FamilyRegistrationPayload, soldier_id: i
     return {
         "status": "success",
         "message": f"Next-of-kin {fam.name} successfully registered for soldier #{soldier_id}."
+    }
+
+
+@router.get("/flagged-case")
+def get_soldier_flagged_case(
+    soldier_id: int = 1,
+    db: Session = Depends(get_db),
+    user: dict = Depends(enforce_soldier_scope)
+):
+    """
+    Returns the soldier's currently active flagged welfare case (if any).
+    Scoped strictly to the authenticated soldier's personnel ID.
+    """
+    auth_soldier_id = user.get("soldier_id") or soldier_id
+    case = db.query(Case).filter_by(personnel_id=auth_soldier_id).order_by(Case.created_at.desc()).first()
+    if not case:
+        return {"has_case": False, "case": None}
+        
+    r = case.risk_assessment
+    factors = json.loads(r.top_factors) if (r and r.top_factors) else []
+    
+    return {
+        "has_case": True,
+        "case": {
+            "id": case.id,
+            "status": case.status,
+            "risk_tier": r.risk_tier if r else "Medium",
+            "risk_color": r.risk_color if r else "Orange",
+            "action_plan": case.action_plan,
+            "created_at": case.created_at,
+            "flagged_personnel_objection": case.flagged_personnel_objection,
+            "objection_filed_at": case.objection_filed_at,
+            "top_factors": factors
+        }
+    }
+
+
+@router.post("/cases/{case_id}/objection")
+def submit_soldier_objection(
+    case_id: int,
+    req: CaseObjectionRequest,
+    soldier_id: int = 1,
+    db: Session = Depends(get_db),
+    user: dict = Depends(enforce_soldier_scope)
+):
+    """
+    Files an official soldier objection/grievance against an automated risk flag.
+    Enforces strict server-side ownership validation:
+    A soldier can ONLY file an objection against their own case.
+    """
+    auth_soldier_id = user.get("soldier_id") or soldier_id
+    case = db.query(Case).filter_by(id=case_id).first()
+    if not case:
+        raise HTTPException(status_code=404, detail="Welfare case not found.")
+        
+    # Server-side validation: ensure case belongs to caller
+    if case.personnel_id != auth_soldier_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Forbidden: You are not authorized to submit an objection for this case."
+        )
+        
+    now = datetime.datetime.utcnow()
+    case.flagged_personnel_objection = req.objection_text.strip()
+    case.objection_filed_at = now
+    
+    # Audit log record
+    db.add(CaseAccessLog(
+        case_id=case.id,
+        accessed_by=f"soldier_{auth_soldier_id}",
+        action="notes_added",
+        accessed_at=now
+    ))
+    db.commit()
+    db.refresh(case)
+    
+    return {
+        "status": "success",
+        "case_id": case.id,
+        "objection_filed_at": case.objection_filed_at.isoformat(),
+        "flagged_personnel_objection": case.flagged_personnel_objection,
+        "message": "Objection officially logged in case audit record and forwarded to reviewing Medical Officer."
     }
