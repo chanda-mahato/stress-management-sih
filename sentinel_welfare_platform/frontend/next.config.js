@@ -1,12 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // Proxy API requests to FastAPI backend
   async rewrites() {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://sentinel-welfare-sih2026.onrender.com/api';
+    const target = apiUrl.replace(/\/$/, '');
     return [
       {
         source: '/api/:path*',
-        destination: 'http://127.0.0.1:8000/api/:path*',
+        destination: `${target}/:path*`,
       },
     ];
   },
