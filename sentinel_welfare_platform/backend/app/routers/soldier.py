@@ -114,11 +114,34 @@ def confirm_call_slot(slot_id: int, soldier_id: int = 1, db: Session = Depends(g
     db.commit()
     return {"status": "confirmed", "slot_id": slot.id}
 
-# Family Registration on Soldier Dashboard
+# Family Registration on Soldier Dashboard (Multi-Member Support)
+@router.get("/family-members")
+def get_soldier_family_members(
+    soldier_id: int = 1,
+    db: Session = Depends(get_db),
+    user: dict = Depends(enforce_soldier_scope)
+):
+    auth_soldier_id = user.get("soldier_id") or soldier_id
+    members = db.query(FamilyMember).filter_by(personnel_id=auth_soldier_id).all()
+    return [
+        {
+            "id": m.id,
+            "name": m.name,
+            "relationship_type": m.relationship_type,
+            "phone_last_4": m.phone_last_4,
+            "registered_at": m.created_at.isoformat() if hasattr(m, "created_at") and m.created_at else None
+        }
+        for m in members
+    ]
+
 @router.get("/family-member")
-def get_soldier_family_member(soldier_id: int = 1, db: Session = Depends(get_db)):
-    fam = db.query(FamilyMember).filter_by(personnel_id=soldier_id).first()
-    if not fam:
+def get_soldier_family_member_legacy(
+    soldier_id: int = 1,
+    db: Session = Depends(get_db),
+    user: dict = Depends(enforce_soldier_scope)
+):
+    members = get_soldier_family_members(soldier_id=soldier_id, db=db, user=user)
+    if not members:
         return {
             "registered": False,
             "name": "",
@@ -126,40 +149,94 @@ def get_soldier_family_member(soldier_id: int = 1, db: Session = Depends(get_db)
             "phone_number": "9876543200",
             "phone_last_4": "3200"
         }
+    m = members[0]
     return {
         "registered": True,
-        "name": fam.name,
-        "relationship_type": fam.relationship_type,
-        "phone_last_4": fam.phone_last_4,
+        "name": m["name"],
+        "relationship_type": m["relationship_type"],
+        "phone_last_4": m["phone_last_4"],
         "phone_number": "9876543200"
     }
 
-@router.post("/family-member")
-def register_soldier_family_member(req: FamilyRegistrationPayload, soldier_id: int = 1, db: Session = Depends(get_db)):
-    phone_hash = hash_phone_number(req.phone_number)
-    phone_last_4 = "".join(c for c in req.phone_number if c.isdigit())[-4:]
+@router.post("/family-members")
+def register_soldier_family_member(
+    req: FamilyRegistrationPayload,
+    soldier_id: int = 1,
+    db: Session = Depends(get_db),
+    user: dict = Depends(enforce_soldier_scope)
+):
+    auth_soldier_id = user.get("soldier_id") or soldier_id
     
-    fam = db.query(FamilyMember).filter_by(personnel_id=soldier_id).first()
-    if fam:
-        fam.name = req.name
-        fam.relationship_type = req.relationship_type
-        fam.phone_number_hash = phone_hash
-        fam.phone_last_4 = phone_last_4
-    else:
-        fam = FamilyMember(
-            personnel_id=soldier_id,
-            name=req.name,
-            relationship_type=req.relationship_type,
-            phone_number_hash=phone_hash,
-            phone_last_4=phone_last_4,
-            registered_by=f"soldier_{soldier_id}"
+    # 1. Enforce max 5 family members limit per soldier
+    current_count = db.query(FamilyMember).filter_by(personnel_id=auth_soldier_id).count()
+    if current_count >= 5:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Maximum limit of 5 registered family members reached for this soldier."
         )
-        db.add(fam)
+        
+    # 2. Check global phone number uniqueness across all family records
+    phone_hash = hash_phone_number(req.phone_number)
+    existing_phone = db.query(FamilyMember).filter_by(phone_number_hash=phone_hash).first()
+    if existing_phone:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This phone number is already registered to a family member."
+        )
+        
+    phone_last_4 = "".join(c for c in req.phone_number if c.isdigit())[-4:]
+    fam = FamilyMember(
+        personnel_id=auth_soldier_id,
+        name=req.name.strip(),
+        relationship_type=req.relationship_type.strip(),
+        phone_number_hash=phone_hash,
+        phone_last_4=phone_last_4,
+        registered_by=f"soldier_{auth_soldier_id}"
+    )
+    db.add(fam)
     db.commit()
     db.refresh(fam)
     return {
         "status": "success",
-        "message": f"Next-of-kin {fam.name} successfully registered for soldier #{soldier_id}."
+        "id": fam.id,
+        "name": fam.name,
+        "relationship_type": fam.relationship_type,
+        "phone_last_4": fam.phone_last_4,
+        "message": f"Next-of-kin {fam.name} successfully registered for soldier #{auth_soldier_id}."
+    }
+
+@router.post("/family-member")
+def register_soldier_family_member_legacy(
+    req: FamilyRegistrationPayload,
+    soldier_id: int = 1,
+    db: Session = Depends(get_db),
+    user: dict = Depends(enforce_soldier_scope)
+):
+    return register_soldier_family_member(req=req, soldier_id=soldier_id, db=db, user=user)
+
+@router.delete("/family-members/{family_member_id}")
+def delete_soldier_family_member(
+    family_member_id: int,
+    soldier_id: int = 1,
+    db: Session = Depends(get_db),
+    user: dict = Depends(enforce_soldier_scope)
+):
+    auth_soldier_id = user.get("soldier_id") or soldier_id
+    fam = db.query(FamilyMember).filter_by(id=family_member_id).first()
+    if not fam:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Family member not found.")
+        
+    if fam.personnel_id != auth_soldier_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Forbidden: You are not authorized to delete this family member record."
+        )
+        
+    db.delete(fam)
+    db.commit()
+    return {
+        "status": "success",
+        "message": f"Family member record #{family_member_id} successfully deleted."
     }
 
 

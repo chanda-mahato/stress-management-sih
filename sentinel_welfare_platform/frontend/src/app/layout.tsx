@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { LanguageProvider } from '@/context/LanguageContext';
 import { GovNavbar } from '@/components/GovNavbar';
@@ -7,6 +7,13 @@ import { GovFooter } from '@/components/GovFooter';
 export const metadata: Metadata = {
   title: 'Sentinel — Ministry of Home Affairs | Personnel Welfare & Stress Monitoring Platform',
   description: 'AI-Based Predictive Personnel Stress & Welfare Monitoring System — Ministry of Home Affairs, Government of India',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
 };
 
 export default function RootLayout({

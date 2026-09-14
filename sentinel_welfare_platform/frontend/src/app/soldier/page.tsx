@@ -4,8 +4,8 @@ import Link from 'next/link';
 import { 
   Shield, CheckCircle, Video, MessageSquare, Sliders, ArrowLeft,
   Calendar, Clock, Heart, Send, Sparkles, AlertTriangle, ShieldCheck,
-  User, CheckCircle2, ChevronRight, PhoneCall, Info, KeyRound, Phone,
-  HeartHandshake, LogOut, UserCheck, RefreshCw, QrCode, Copy, Check
+  User, CheckCircle2, ChevronRight, PhoneCall, Info, KeyRound, Building,
+  HeartHandshake, Eye, Phone, LogOut, Activity, Trash2, PlusCircle, UserCheck, RefreshCw
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { useLanguage } from '@/context/LanguageContext';
@@ -35,12 +35,61 @@ export default function SoldierPortal() {
   const [chatOpen, setChatOpen] = useState(false);
   const [callModalOpen, setCallModalOpen] = useState(false);
   
-  // Family Registration on Soldier Dashboard
+  // Family Registration on Soldier Dashboard (Multi-Member Support)
+  const [familyMembers, setFamilyMembers] = useState<any[]>([]);
   const [famName, setFamName] = useState('Smt. Sunita Devi');
   const [famRelation, setFamRelation] = useState('Wife / Spouse');
   const [famPhone, setFamPhone] = useState('9876543200');
   const [famSavedMsg, setFamSavedMsg] = useState('');
+  const [famAdding, setFamAdding] = useState(false);
   const [incomingCall, setIncomingCall] = useState<any>(null);
+
+  const loadFamilyMembers = () => {
+    apiFetch('/soldier/family-members?soldier_id=1')
+      .then(data => {
+        if (Array.isArray(data)) {
+          setFamilyMembers(data);
+        }
+      })
+      .catch(() => {});
+  };
+
+  const handleSaveFamily = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!famName.trim() || !famPhone.trim()) return;
+    setFamSavedMsg('');
+    setFamAdding(true);
+    try {
+      await apiFetch('/soldier/family-members?soldier_id=1', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: famName.trim(),
+          relationship_type: famRelation,
+          phone_number: famPhone.trim()
+        })
+      });
+      setFamSavedMsg(t('Family member authorized successfully.', 'परिवार सदस्य सफलतापूर्वक अधिकृत किया गया।'));
+      setFamName('');
+      setFamPhone('');
+      loadFamilyMembers();
+      setTimeout(() => setFamSavedMsg(''), 4000);
+    } catch (err: any) {
+      setFamSavedMsg(`Error: ${err.message}`);
+    } finally {
+      setFamAdding(false);
+    }
+  };
+
+  const handleRemoveFamily = async (memberId: number) => {
+    try {
+      await apiFetch(`/soldier/family-members/${memberId}?soldier_id=1`, {
+        method: 'DELETE'
+      });
+      loadFamilyMembers();
+    } catch (err: any) {
+      alert(`Delete failed: ${err.message}`);
+    }
+  };
 
   // Welfare Flag & Objection State (MHA §6a Misuse Protection)
   const [flaggedCase, setFlaggedCase] = useState<any>(null);
@@ -169,16 +218,8 @@ export default function SoldierPortal() {
         }
       ]));
 
-    // Load registered family
-    apiFetch('/soldier/family-member?soldier_id=1')
-      .then(data => {
-        if (data.registered) {
-          setFamName(data.name);
-          setFamRelation(data.relationship_type);
-          if (data.phone_number) setFamPhone(data.phone_number);
-        }
-      })
-      .catch(() => {});
+    // Load registered family members list
+    loadFamilyMembers();
 
     // Load active flagged case & objection (MHA §6a)
     apiFetch('/soldier/flagged-case?soldier_id=1')
@@ -219,23 +260,7 @@ export default function SoldierPortal() {
     }
   };
 
-  const handleSaveFamily = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFamSavedMsg('');
-    try {
-      await apiFetch('/soldier/family-member?soldier_id=1', {
-        method: 'POST',
-        body: JSON.stringify({
-          name: famName,
-          relationship_type: famRelation,
-          phone_number: famPhone
-        })
-      });
-      setFamSavedMsg(t('Family member saved successfully.', 'परिवार सदस्य सफलतापूर्वक सुरक्षित किया गया।'));
-    } catch (err: any) {
-      setFamSavedMsg(`Save error: ${err.message}`);
-    }
-  };
+
 
   const handleSendImOkay = async () => {
     try {
@@ -504,22 +529,22 @@ export default function SoldierPortal() {
             </button>
           </div>
 
-          {/* FAMILY MEMBER REGISTRATION (IN SOLDIER PORTAL ONLY) */}
+          {/* FAMILY MEMBER REGISTRATION (IN SOLDIER PORTAL ONLY - MULTI MEMBER) */}
           <div className="gov-card rounded-2xl p-5 sm:p-6 border-t-4 border-t-emerald-600 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-200 pb-3">
               <div className="flex items-center gap-2">
                 <HeartHandshake className="w-5 h-5 text-emerald-600" />
                 <div>
                   <h3 className="text-sm font-bold text-[#0a2540]">
-                    {t("Family Member Registration (Next-of-Kin)", "परिवार सदस्य पंजीकरण (निकटतम परिजन)")}
+                    {t("Authorized Family Members (Next-of-Kin)", "अधिकृत परिजन (निकटतम संबंधी)")}
                   </h3>
                   <p className="text-[11px] text-slate-500">
-                    {t("Authorize designated relative for Family Portal OTP login and scheduled calls.", "परिवार पोर्टल में ओटीपी लॉगिन एवं वीडियो कॉल हेतु अधिकृत परिजन का विवरण।")}
+                    {t("Authorize designated relatives for Family Portal OTP login and video calls (max 5).", "परिवार पोर्टल में ओटीपी लॉगिन एवं वीडियो कॉल हेतु अधिकृत परिजनों का विवरण (अधिकतम 5)।")}
                   </p>
                 </div>
               </div>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
-                {t("Soldier Controlled Only", "केवल जवान द्वारा नियंत्रित")}
+                {familyMembers.length} / 5 {t("Registered", "पंजीकृत")}
               </span>
             </div>
 
@@ -529,60 +554,108 @@ export default function SoldierPortal() {
               </div>
             )}
 
-            <form onSubmit={handleSaveFamily} className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  {t("Relative Full Name:", "परिजन का पूरा नाम:")}
-                </label>
-                <input
-                  type="text"
-                  value={famName}
-                  onChange={(e) => setFamName(e.target.value)}
-                  placeholder="e.g. Smt. Sunita Devi"
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800"
-                />
-              </div>
+            {/* List of Registered Family Members */}
+            {familyMembers.length > 0 && (
+              <div className="space-y-2">
+                <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                  {t("Authorized Relatives List:", "अधिकृत परिजनों की सूची:")}
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {familyMembers.map((fam) => (
+                    <div key={fam.id} className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between gap-2">
+                      <div className="space-y-0.5">
+                        <div className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                          <User className="w-3.5 h-3.5 text-emerald-700" />
+                          <span>{fam.name}</span>
+                        </div>
+                        <div className="text-[11px] text-slate-500 flex items-center gap-2">
+                          <span className="bg-emerald-100 text-emerald-900 font-semibold px-2 py-0.5 rounded text-[10px]">{fam.relationship_type}</span>
+                          <span className="font-mono text-slate-700 font-bold">•••• •••• {fam.phone_last_4}</span>
+                        </div>
+                      </div>
 
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  {t("Relationship Type:", "जवान से संबंध:")}
-                </label>
-                <select
-                  value={famRelation}
-                  onChange={(e) => setFamRelation(e.target.value)}
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800"
-                >
-                  <option value="Wife / Spouse">Wife / Spouse (पत्नी)</option>
-                  <option value="Father">Father (पिता)</option>
-                  <option value="Mother">Mother (माता)</option>
-                  <option value="Son / Daughter">Son / Daughter (पुत्र / पुत्री)</option>
-                  <option value="Brother / Sister">Brother / Sister (भाई / बहन)</option>
-                </select>
+                      <button
+                        onClick={() => handleRemoveFamily(fam.id)}
+                        className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition"
+                        title={t("Remove Family Member", "परिवार सदस्य हटाएं")}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
+            )}
 
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  {t("Authorized Mobile Number:", "अधिकृत मोबाइल नंबर:")}
-                </label>
-                <input
-                  type="tel"
-                  value={famPhone}
-                  onChange={(e) => setFamPhone(e.target.value)}
-                  placeholder="e.g. 9876543200"
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg font-mono text-slate-800"
-                />
-              </div>
+            {/* Form to Add Family Member */}
+            {familyMembers.length < 5 ? (
+              <form onSubmit={handleSaveFamily} className="pt-2 border-t border-slate-100 space-y-3">
+                <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                  <PlusCircle className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>{t("Authorize Additional Family Member:", "अन्य परिजन को अधिकृत करें:")}</span>
+                </span>
 
-              <div className="sm:col-span-3 flex justify-end">
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-lg text-xs transition flex items-center gap-1.5"
-                >
-                  <UserCheck className="w-3.5 h-3.5" />
-                  <span>{t("Save & Authorize Family Member", "विवरण सुरक्षित करें एवं अधिकृत करें")}</span>
-                </button>
-              </div>
-            </form>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      {t("Relative Full Name:", "परिजन का पूरा नाम:")}
+                    </label>
+                    <input
+                      type="text"
+                      value={famName}
+                      onChange={(e) => setFamName(e.target.value)}
+                      placeholder="e.g. Smt. Sunita Devi"
+                      className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 focus:ring-1 focus:ring-emerald-600"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      {t("Relationship Type:", "जवान से संबंध:")}
+                    </label>
+                    <select
+                      value={famRelation}
+                      onChange={(e) => setFamRelation(e.target.value)}
+                      className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 focus:ring-1 focus:ring-emerald-600"
+                    >
+                      <option value="Wife / Spouse">Wife / Spouse (पत्नी)</option>
+                      <option value="Father">Father (पिता)</option>
+                      <option value="Mother">Mother (माता)</option>
+                      <option value="Son / Daughter">Son / Daughter (पुत्र / पुत्री)</option>
+                      <option value="Brother / Sister">Brother / Sister (भाई / बहन)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      {t("Authorized Mobile Number:", "अधिकृत मोबाइल नंबर:")}
+                    </label>
+                    <input
+                      type="tel"
+                      value={famPhone}
+                      onChange={(e) => setFamPhone(e.target.value)}
+                      placeholder="e.g. 9876543200"
+                      className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg font-mono text-slate-800 focus:ring-1 focus:ring-emerald-600"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="submit"
+                    disabled={famAdding}
+                    className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-lg text-xs transition flex items-center gap-1.5 shadow-sm"
+                  >
+                    <UserCheck className="w-3.5 h-3.5" />
+                    <span>{famAdding ? t("Authorizing...", "अधिकृत हो रहा है...") : t("Add & Authorize Member", "परिजन अधिकृत करें")}</span>
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <p className="text-xs text-slate-500 italic border-t border-slate-100 pt-2">
+                {t("Maximum limit of 5 family members reached. Remove an existing member to add a new relative.", "अधिकतम 5 परिजनों की सीमा पूरी हो चुकी है। नया सदस्य जोड़ने के लिए पुराना विवरण हटाएं।")}
+              </p>
+            )}
           </div>
 
           {/* SCHEDULED CALL SLOTS */}

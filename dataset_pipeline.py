@@ -44,10 +44,10 @@ os.makedirs(PROCESSED_DIR, exist_ok=True)
 RANDOM_SEED = 42
 TARGET_N = 7500
 
-NOISE_SIGMA = 1.0
-NOISE_CLIP = 2.5
-R2_CEILING_PCT = 95.2
-ACC_CEILING_PCT = 92.5
+NOISE_SIGMA = 2.6
+NOISE_CLIP = 5.2
+R2_CEILING_PCT = 85.6
+ACC_CEILING_PCT = 82.2
 NOISE_DESCRIPTION = f"Gaussian sigma={NOISE_SIGMA}, clipped to [-{NOISE_CLIP}, +{NOISE_CLIP}]"
 
 np.random.seed(RANDOM_SEED)
@@ -428,7 +428,7 @@ wsi_raw = 100.0 * (
     W_CONDUCT * v_conduct
 )
 
-# Calibrated Gaussian Noise (sigma=1.0, clipped to [-2.5, +2.5])
+# Calibrated Gaussian Noise (sigma=2.6, clipped to [-5.2, +5.2])
 rng_noise = np.random.default_rng(seed=808)
 noise_gaussian = rng_noise.normal(loc=0.0, scale=NOISE_SIGMA, size=N)
 noise_gaussian = np.clip(noise_gaussian, -NOISE_CLIP, NOISE_CLIP)

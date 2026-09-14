@@ -20,7 +20,7 @@ sentinel_welfare_platform/
 │   │   ├── auth.py                   # JWT + OTP + Strict OPSEC Scope Enforcement
 │   │   ├── services/                 # ML Engine (SHAP), Ephemeral Chat, Roster Scheduler, Rate Limiter
 │   │   └── routers/                  # ML, Personnel, Cases, Soldier, Family, Chat, Signaling
-│   └── tests/                        # Automated Pytest Suite (12/12 Acceptance & Governance Tests Passing, Isolated DB)
+│   └── tests/                        # Automated Pytest Suite (13/13 Acceptance & Governance Tests Passing, Isolated DB)
 ├── frontend/                         # Next.js 14 PWA with 3 Portal Surfaces
 │   └── src/app/
 │       ├── page.tsx                  # Command Portal Switcher & System Gateway
@@ -84,7 +84,7 @@ py -3.13 -m uvicorn app.main:app --port 8000 --reload
 * Interactive API Documentation (Swagger UI): `http://127.0.0.1:8000/docs`
 * Deep Health Check (DB + ML status): `http://127.0.0.1:8000/health`
 
-### 3. Run the Automated Test Suite (12/12 Acceptance & Governance Tests Passing)
+### 3. Run the Automated Test Suite (13/13 Acceptance & Governance Tests Passing)
 Tests execute against an isolated test SQLite database without touching development databases:
 ```powershell
 cd backend

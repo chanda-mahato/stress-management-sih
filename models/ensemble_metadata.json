@@ -1,12 +1,12 @@
 {
-  "pipeline_revision": 3,
+  "pipeline_revision": 4,
   "noise_configuration": {
-    "noise_sigma": 1.0,
-    "noise_clip_min": -2.5,
-    "noise_clip_max": 2.5,
-    "r2_ceiling_pct": 95.2,
-    "acc_ceiling_pct": 92.5,
-    "noise_description": "Gaussian sigma=1.0, clipped to [-2.5, +2.5]"
+    "noise_sigma": 2.6,
+    "noise_clip_min": -5.2,
+    "noise_clip_max": 5.2,
+    "r2_ceiling_pct": 85.6,
+    "acc_ceiling_pct": 82.2,
+    "noise_description": "Gaussian sigma=2.6, clipped to [-5.2, +5.2]"
   },
   "feature_names": [
     "age",
@@ -14,13 +14,13 @@
     "distance_from_home_station_km",
     "num_dependents",
     "rank_encoded",
-    "unit_type_encoded",
-    "deployment_theatre_encoded",
+    "annual_fitness_grade_encoded",
+    "fitness_trend_score",
     "deployment_duration_days",
     "posting_transfer_count_last_2yrs",
+    "commute_transit_days",
     "unit_manning_shortfall_pct",
     "promotion_stagnation_years",
-    "commute_transit_days",
     "duty_hours_daily",
     "rest_hours_daily",
     "overtime_hours_monthly",
@@ -35,23 +35,26 @@
     "absenteeism_hours_last_year",
     "family_separation_months",
     "conduct_flag",
-    "satisfaction_score",
-    "work_life_balance_score",
-    "stress_score",
-    "sleep_quality_score",
-    "fatigue_score",
-    "social_support_score",
-    "emotional_wellbeing_score",
     "body_mass_index",
-    "annual_fitness_grade_encoded",
-    "fitness_trend_score",
     "stagnation_per_tenure_ratio",
     "transit_separation_burden",
     "manning_training_ratio",
     "transfer_tenure_friction",
     "manning_absenteeism_load",
     "training_vs_unit_median",
-    "absenteeism_vs_rank_median"
+    "absenteeism_vs_rank_median",
+    "theatre_Border Outpost (LoC/IB)",
+    "theatre_J&K (CI/Ops)",
+    "theatre_LWE / Bastar (Anti-Naxal)",
+    "theatre_North-East (Counter-Insurgency)",
+    "theatre_Peace / Training Center",
+    "theatre_Static Security / VIP",
+    "unit_CoBRA Strike Unit",
+    "unit_General Duty (GD)",
+    "unit_Medical & Logistics",
+    "unit_Rapid Action Force (RAF)",
+    "unit_Signal & IT Wing",
+    "unit_VIP Security Wing"
   ],
   "raw_feature_names": [
     "age",
@@ -59,13 +62,13 @@
     "distance_from_home_station_km",
     "num_dependents",
     "rank_encoded",
-    "unit_type_encoded",
-    "deployment_theatre_encoded",
+    "annual_fitness_grade_encoded",
+    "fitness_trend_score",
     "deployment_duration_days",
     "posting_transfer_count_last_2yrs",
+    "commute_transit_days",
     "unit_manning_shortfall_pct",
     "promotion_stagnation_years",
-    "commute_transit_days",
     "duty_hours_daily",
     "rest_hours_daily",
     "overtime_hours_monthly",
@@ -80,16 +83,19 @@
     "absenteeism_hours_last_year",
     "family_separation_months",
     "conduct_flag",
-    "satisfaction_score",
-    "work_life_balance_score",
-    "stress_score",
-    "sleep_quality_score",
-    "fatigue_score",
-    "social_support_score",
-    "emotional_wellbeing_score",
     "body_mass_index",
-    "annual_fitness_grade_encoded",
-    "fitness_trend_score"
+    "theatre_Border Outpost (LoC/IB)",
+    "theatre_J&K (CI/Ops)",
+    "theatre_LWE / Bastar (Anti-Naxal)",
+    "theatre_North-East (Counter-Insurgency)",
+    "theatre_Peace / Training Center",
+    "theatre_Static Security / VIP",
+    "unit_CoBRA Strike Unit",
+    "unit_General Duty (GD)",
+    "unit_Medical & Logistics",
+    "unit_Rapid Action Force (RAF)",
+    "unit_Signal & IT Wing",
+    "unit_VIP Security Wing"
   ],
   "class_names": [
     "Low",
@@ -97,9 +103,9 @@
     "High"
   ],
   "classification_weights": [
-    0.1,
     0.0,
-    0.9
+    0.25,
+    0.75
   ],
   "regression_weights": [
     0.1,
@@ -119,7 +125,7 @@
       "min_child_samples": 30
     },
     "catboost": {
-      "depth": 6,
+      "depth": 8,
       "learning_rate": 0.08,
       "l2_leaf_reg": 3
     }
@@ -128,70 +134,70 @@
     "xgboost": {
       "multiplier": 1.0,
       "weights": {
-        "0": 1.267427122940431,
-        "1": 0.5499037668408029,
-        "2": 2.5477707006369426
+        "0": 1.2445550715619167,
+        "1": 0.6825938566552902,
+        "2": 1.367053998632946
       }
     },
     "lightgbm": {
-      "multiplier": 2.5,
+      "multiplier": 1.5,
       "weights": {
-        "0": 1.267427122940431,
-        "1": 0.5499037668408029,
-        "2": 6.369426751592356
+        "0": 1.2445550715619167,
+        "1": 0.6825938566552902,
+        "2": 2.050580997949419
       }
     },
     "catboost": {
       "multiplier": 1.0,
       "weights": [
-        1.267427122940431,
-        0.5499037668408029,
-        2.5477707006369426
+        1.2445550715619167,
+        0.6825938566552902,
+        1.367053998632946
       ]
     }
   },
   "ablation_study": {
     "classification": {
-      "raw_36_features": {
-        "accuracy": 0.8953333333333333,
-        "macro_f1": 0.8838532608274812,
-        "high_risk_recall": 0.8979591836734694,
-        "high_risk_f1": 0.8606356968215159
+      "raw_objective_features": {
+        "accuracy": 0.7966666666666666,
+        "macro_f1": 0.7973214988049214,
+        "high_risk_recall": 0.7896174863387978,
+        "high_risk_f1": 0.7885402455661664
       },
-      "full_43_features": {
-        "accuracy": 0.8966666666666666,
-        "macro_f1": 0.8836667948602978,
-        "high_risk_recall": 0.8979591836734694,
-        "high_risk_f1": 0.8523002421307506
+      "full_objective_features": {
+        "accuracy": 0.7933333333333333,
+        "macro_f1": 0.7936525524953039,
+        "high_risk_recall": 0.7841530054644809,
+        "high_risk_f1": 0.7895460797799174
       }
     },
     "regression": {
-      "raw_36_features": {
-        "r2": 0.9548864879806079,
-        "r2_pct": 95.4886487980608,
-        "rmse": 1.2981505709441048,
-        "mae": 1.0198417556173598
+      "raw_objective_features": {
+        "r2": 0.8797144440372094,
+        "r2_pct": 87.97144440372094,
+        "rmse": 2.6801004356914637,
+        "mae": 2.1631195207355742
       },
-      "full_43_features": {
-        "r2": 0.955255587424879,
-        "r2_pct": 95.5255587424879,
-        "rmse": 1.2928292081661268,
-        "mae": 1.0140472154704259
+      "full_objective_features": {
+        "r2": 0.8789273911332993,
+        "r2_pct": 87.89273911332994,
+        "rmse": 2.688854361004723,
+        "mae": 2.168974180560037
       }
     }
   },
   "individual_models": {
     "xgboost": {
-      "r2_pct": 91.42035533849884,
-      "accuracy": 0.882
+      "r2_pct": 85.39976447679616,
+      "accuracy": 0.7606666666666667
     },
     "lightgbm": {
-      "r2_pct": 92.26230698132674,
-      "accuracy": 0.8813333333333333
+      "r2_pct": 85.70443462963898,
+      "accuracy": 0.7733333333333333
     },
     "catboost": {
-      "r2_pct": 95.93986277803589,
-      "accuracy": 0.892
+      "r2_pct": 88.10275291872617,
+      "accuracy": 0.7973333333333333
     }
   }
 }
