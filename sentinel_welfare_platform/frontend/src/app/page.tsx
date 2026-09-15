@@ -312,26 +312,26 @@ export default function MhaPortalLanding() {
         </div>
       </section>
 
-      {/* 3. TEST CALL TO ACTUAL PHONE BANNER */}
+      {/* 3. SOVEREIGN 1:1 VIDEO CALL BANNER */}
       <section className="bg-gradient-to-r from-emerald-50 via-blue-50 to-indigo-50 border-b border-emerald-200 py-6 px-4 sm:px-6">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md shrink-0">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-700 text-white flex items-center justify-center shadow-md shrink-0">
               <Video className="w-6 h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded bg-emerald-200 text-emerald-900 font-bold text-[10px] uppercase">
-                  {t("Interactive Testing Feature", "इंटरएक्टिव परीक्षण सुविधा")}
+                <span className="px-2 py-0.5 rounded bg-emerald-200 text-emerald-950 font-bold text-[10px] uppercase">
+                  {t("MHA Directive §6a Feature", "गृह मंत्रालय निर्देश §6a सुविधा")}
                 </span>
-                <span className="text-xs font-bold text-emerald-800">
-                  {t("Real-Time 1:1 Video Call to Your Physical Phone", "अपने असली मोबाइल फ़ोन पर लाइव 1:1 वीडियो कॉल")}
+                <span className="text-xs font-bold text-emerald-900">
+                  {t("Real-Time Encrypted 1:1 Video Communication", "सुरक्षित 1:1 लाइव वीडियो संचार सुविधा")}
                 </span>
               </div>
               <p className="text-xs text-slate-600 mt-0.5">
                 {t(
-                  "Enter any mobile number in Soldier or Family portal to log in with OTP, then scan the QR code to test live video call directly between your laptop and smartphone.",
-                  "जवान या परिवार पोर्टल में अपना नंबर दर्ज करें, स्क्रीन पर आया OTP भरें, और QR कोड स्कैन करके लैपटॉप और मोबाइल के बीच तुरंत लाइव वीडियो कॉल टेस्ट करें।"
+                  "Log in via Soldier or Family portal using authorized mobile number and OTP. Connect directly over 1:1 WebRTC P2P encrypted media stream with OPSEC privacy shield.",
+                  "अधिकृत मोबाइल नंबर और OTP से जवान या परिवार पोर्टल में लॉगिन करें। OPSEC गोपनीयता शील्ड के साथ 1:1 एंड-टू-एंड एन्क्रिप्टेड वीडियो संचार से सीधे जुड़ें।"
                 )}
               </p>
             </div>
@@ -343,14 +343,14 @@ export default function MhaPortalLanding() {
               className="px-4 py-2 bg-[#003366] hover:bg-[#002244] text-white text-xs font-bold rounded-lg shadow-sm flex items-center gap-1.5 transition"
             >
               <Phone className="w-3.5 h-3.5 text-amber-400" />
-              <span>{t("Test via Soldier Portal", "जवान पोर्टल से टेस्ट करें")}</span>
+              <span>{t("Connect via Soldier Portal", "जवान पोर्टल से कनेक्ट करें")}</span>
             </Link>
             <Link
-              href="/call"
+              href="/family"
               className="px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-bold rounded-lg shadow-2xs flex items-center gap-1.5 transition"
             >
-              <QrCode className="w-3.5 h-3.5 text-emerald-600" />
-              <span>{t("Mobile Call Screen", "मोबाइल कॉल स्क्रीन")}</span>
+              <Heart className="w-3.5 h-3.5 text-emerald-600" />
+              <span>{t("Family Portal Access", "परिवार पोर्टल पहुंच")}</span>
             </Link>
           </div>
         </div>
