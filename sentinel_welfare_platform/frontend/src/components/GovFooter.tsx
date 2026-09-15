@@ -54,12 +54,7 @@ export const GovFooter: React.FC = () => {
                 <span>{t("Parivar Kalyan (Family Connect)", "परिवार कल्याण (सुरक्षित संपर्क)")}</span>
               </Link>
             </li>
-            <li>
-              <Link href="/call" className="hover:text-amber-300 transition flex items-center gap-1.5">
-                <span>•</span>
-                <span>{t("1:1 Mobile Video Call Screen", "1:1 मोबाइल वीडियो कॉल स्क्रीन")}</span>
-              </Link>
-            </li>
+
           </ul>
         </div>
 

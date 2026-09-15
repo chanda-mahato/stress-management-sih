@@ -362,7 +362,7 @@ export default function MhaPortalLanding() {
                   <div className="font-bold text-[#003366]">{t("Features:", "मुख्य विशेषताएं:")}</div>
                   <div>• {t("Instant OTP login with any mobile number", "किसी भी मोबाइल नंबर से तुरंत ओटीपी लॉगिन")}</div>
                   <div>• {t("Family member registration & emergency link", "परिवार सदस्य पंजीकरण एवं आपातकालीन संपर्क")}</div>
-                  <div>• {t("Direct 1:1 video calling to actual phone", "असली मोबाइल फ़ोन पर सीधी 1:1 वीडियो कॉलिंग")}</div>
+                  <div>• {t("Confidential WebRTC family video connect", "गोपनीय वेबआरटीसी (WebRTC) पारिवारिक वीडियो संवाद")}</div>
                   <div>• {t("Bilingual Sahayak AI chat assistance", "द्विभाषी 'सहायक' एआई चैट सहायता")}</div>
                 </div>
               </div>
