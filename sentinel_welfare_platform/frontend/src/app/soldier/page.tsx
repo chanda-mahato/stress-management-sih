@@ -707,21 +707,21 @@ export default function SoldierPortal() {
                 </div>
                 <div>
                   <h3 className="text-sm font-extrabold text-[#0a2540] flex items-center gap-2">
-                    <span>{t("दैनिक स्वास्थ्य एवं सजगता स्व-मूल्यांकन", "Daily Duty Readiness & Well-Being Check")}</span>
+                    <span>{t("Monthly Living & Welfare Conditions Assessment", "मासिक आवास, मेस एवं कल्याणकारी स्व-मूल्यांकन")}</span>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
                       {t("Strictly Non-Punitive", "पूर्णतः गैर-दंडात्मक")}
                     </span>
                   </h3>
                   <p className="text-[11px] text-slate-500 mt-0.5">
                     {t(
-                      "Confidential reflection on sleep, body tension, alertness & mess appetite. Never asks 'Are you stressed?'",
-                      "नींद, शारीरिक तनाव, सजगता एवं भोजन पर गोपनीय आत्म-चिंतन। किसी दंडात्मक उद्देश्य हेतु नहीं।"
+                      "Confidential monthly evaluation of mess food quality, barrack living conditions, shift rotations, and family contact. Evaluates stress-causing factors without blunt questions.",
+                      "मेस भोजन, बैरक स्वच्छता, ड्यूटी चक्र एवं पारिवारिक संपर्क पर मासिक गोपनीय मूल्यांकन। बिना असहज सवालों के तनाव के कारणों का मूल्यांकन।"
                     )}
                   </p>
                 </div>
               </div>
               <span className="hidden sm:inline-flex text-[10px] font-semibold px-2.5 py-1 rounded bg-slate-100 text-slate-600 border border-slate-200">
-                {t("Personnel Awareness", "व्यक्तिगत सजगता")}
+                {t("Monthly Evaluation", "मासिक आत्म-मूल्यांकन")}
               </span>
             </div>
 
