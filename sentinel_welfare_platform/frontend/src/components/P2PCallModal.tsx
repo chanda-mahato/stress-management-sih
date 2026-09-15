@@ -392,18 +392,8 @@ export const P2PCallModal: React.FC<P2PCallModalProps> = ({
                   className="px-3 py-1.5 bg-[#003366] text-white text-xs font-bold rounded-lg flex items-center gap-1 shrink-0"
                 >
                   {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copied ? t("Copied!", "कॉपी हुआ!") : t("Copy", "कॉपी")}</span>
+                  <span>{copied ? t("Copied!", "कॉपी हुआ!") : t("Copy Link", "कॉपी लिंक")}</span>
                 </button>
-                <a
-                  href={mobileCallUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-bold rounded-lg flex items-center gap-1 shrink-0"
-                  title="Open Receiver in New Tab (Test on PC)"
-                >
-                  <ExternalLink className="w-3.5 h-3.5 text-[#003366]" />
-                  <span>{t("New Tab", "नया टैब")}</span>
-                </a>
               </div>
             </div>
 
@@ -442,12 +432,70 @@ export const P2PCallModal: React.FC<P2PCallModalProps> = ({
               </div>
             </div>
 
+            {/* WHY IS THIS CALL SAFER FOR PRIVACY THAN A NORMAL PHONE CALL */}
+            <div className="p-4 bg-emerald-50/80 border border-emerald-300 rounded-xl space-y-2.5">
+              <div className="flex items-center gap-2 border-b border-emerald-200/80 pb-2">
+                <ShieldCheck className="w-4.5 h-4.5 text-emerald-700 shrink-0" />
+                <h4 className="text-xs font-bold text-emerald-950">
+                  {t(
+                    "Why is Sentinel Call safer for privacy than a normal cellular call?",
+                    "सामान्य सेलुलर कॉल की तुलना में सेंटिनल कॉल अधिक सुरक्षित क्यों है?"
+                  )}
+                </h4>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-emerald-900 leading-relaxed">
+                <div className="flex items-start gap-1.5 bg-white/80 p-2 rounded-lg border border-emerald-200">
+                  <span className="text-emerald-700 font-bold shrink-0">🔒</span>
+                  <div>
+                    <strong>{t("P2P End-to-End Encryption:", "P2P एंड-टू-एंड एन्क्रिप्शन:")}</strong>{" "}
+                    {t(
+                      "Media streams directly between devices with DTLS-SRTP encryption, avoiding commercial telecom servers.",
+                      "मीडिया बिना किसी टेलीकॉम सर्वर के सीधे दो उपकरणों के बीच DTLS-SRTP से एन्क्रिप्ट होता है।"
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-1.5 bg-white/80 p-2 rounded-lg border border-emerald-200">
+                  <span className="text-emerald-700 font-bold shrink-0">📍</span>
+                  <div>
+                    <strong>{t("Zero Location Tracking:", "लोकेशन ट्रैकिंग सुरक्षा:")}</strong>{" "}
+                    {t(
+                      "Blocks GPS, cell-tower triangulation, and IP tracking under MHA Directive §6a.",
+                      "सेल-टॉवर ट्रैकिंग, जीपीएस एवं आईपी एड्रेस को गृह मंत्रालय §6a निर्देश के तहत ब्लॉक रखता है।"
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-1.5 bg-white/80 p-2 rounded-lg border border-emerald-200">
+                  <span className="text-emerald-700 font-bold shrink-0">📜</span>
+                  <div>
+                    <strong>{t("Zero Call Records (No CDR):", "शून्य रिकॉर्ड (No CDR):")}</strong>{" "}
+                    {t(
+                      "Normal calls leave CDR logs with telecom providers. Sentinel sessions leave zero database history.",
+                      "टेलीकॉम कंपनियां साधारण कॉल का इतिहास दर्ज करती हैं। सेंटिनल में शून्य डेटाबेस लॉग रहता है।"
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-1.5 bg-white/80 p-2 rounded-lg border border-emerald-200">
+                  <span className="text-emerald-700 font-bold shrink-0">🛡️</span>
+                  <div>
+                    <strong>{t("OPSEC Identity Shielding:", "सैन्य पहचान सुरक्षा (OPSEC):")}</strong>{" "}
+                    {t(
+                      "Masks phone numbers over secure military relays to protect operational secrecy.",
+                      "सैन्य गोपनीयता बनाए रखने हेतु फोन नंबर सुरक्षित मिलिट्री रिले से प्रच्छन्न रहता है।"
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* OPSEC PRIVACY & LOCATION SHIELD (MHA DIRECTIVE §6a) */}
             <div className="p-3.5 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-blue-950 flex items-center gap-1.5">
                   <ShieldCheck className="w-4 h-4 text-blue-700" />
-                  <span>{t("OPSEC Privacy & Location Shield (MHA §6a)", "गोपनीयता एवं लोकेशन शील्ड (गृह मंत्रालय §6a)")}</span>
+                  <span>{t("OPSEC Identity Masking (MHA §6a)", "गोपनीयता एवं नंबर शील्ड (गृह मंत्रालय §6a)")}</span>
                 </span>
                 <label className="flex items-center gap-1.5 cursor-pointer text-[11px] font-bold text-blue-900 bg-blue-100/80 px-2 py-0.5 rounded-full border border-blue-200">
                   <input
