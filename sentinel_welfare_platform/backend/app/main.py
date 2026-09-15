@@ -25,29 +25,17 @@ app = FastAPI(
 def get_cors_origins() -> list[str]:
     """
     Computes explicitly allowed CORS origins.
-    Includes deployed frontend domain URLs (Render static site & Vercel) alongside local dev origins.
+    Permits wildcard '*' or explicitly declared origins to enable cross-domain requests.
     """
-    configured = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
-    
-    origins = [
-        "http://localhost:3000", 
-        "http://127.0.0.1:3000", 
-        "http://localhost:8000", 
-        "http://127.0.0.1:8000", 
-        "http://testserver",
-        "https://sentinel-frontend-app.onrender.com",
-    ]
-    
-    for origin in configured:
-        if origin and origin not in origins and origin != "*":
-            origins.append(origin)
-            
-    return origins
+    if settings.CORS_ORIGINS:
+        origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
+        if origins:
+            return origins
+    return ["*"]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=get_cors_origins(),
-    allow_origin_regex=r".*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
