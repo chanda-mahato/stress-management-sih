@@ -571,7 +571,7 @@ export const SoldierSelfAssessmentModal: React.FC<Props> = ({
                 ) : (
                   <>
                     <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                    <span>{t("Submit Monthly Welfare Assessment & View Report", "मासिक मूल्यांकन सबमिट करें एवं व्यक्तिगत रिपोर्ट देखें")}</span>
+                    <span>{t("Submit Monthly Welfare Assessment Confidentially", "मासिक कल्याण मूल्यांकन गोपनीय रूप से सबमिट करें")}</span>
                   </>
                 )}
               </button>
@@ -591,13 +591,12 @@ export const SoldierSelfAssessmentModal: React.FC<Props> = ({
                 {t("Confidential Self-Check Completed", "गोपनीय स्व-मूल्यांकन संपन्न")}
               </span>
               <h3 className="text-xl font-bold text-[#0a2540]">
-                {t("Your Rest & Readiness Score: ", "आपकी ऊर्जा एवं सजगता सूचकांक: ")}
-                <span className="text-[#003366]">{result.readiness_index || batteryPercent}/100</span>
+                {t("Assessment Submitted Confidentially", "मूल्यांकन सफलतापूर्वक दर्ज किया गया")}
               </h3>
               <p className="text-xs text-slate-500 max-w-md mx-auto">
                 {t(
-                  "Thank you for your candid self-reflection. This data is private and assists in protecting your duty-rest cycles without disciplinary records.",
-                  "आपके ईमानदार स्व-मूल्यांकन हेतु धन्यवाद। यह जानकारी पूर्णतः सुरक्षित है और इसका कोई दंडात्मक रिकॉर्ड नहीं बनाया जाता।"
+                  "Thank you for your candid self-reflection. Your responses are strictly non-punitive and assist in protecting your duty-rest cycles.",
+                  "आपके ईमानदार स्व-मूल्यांकन हेतु धन्यवाद। आपकी प्रतिक्रियाएं पूर्णतः सुरक्षित हैं तथा ड्यूटी-विश्राम चक्र को बेहतर बनाने में सहायक हैं।"
                 )}
               </p>
             </div>
