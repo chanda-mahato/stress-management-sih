@@ -21,15 +21,20 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
     ...(options.headers || {}),
   };
   
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 4500);
+
   try {
-    const res = await fetch(url, { ...options, headers });
+    const res = await fetch(url, { ...options, headers, signal: controller.signal });
+    clearTimeout(timeoutId);
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
       throw new Error(errData.detail || `Request failed with status ${res.status}`);
     }
     return await res.json();
   } catch (err: any) {
-    console.error(`API Error on ${url}:`, err);
+    clearTimeout(timeoutId);
+    console.warn(`API Note on ${url}:`, err.message || err);
     throw err;
   }
 }

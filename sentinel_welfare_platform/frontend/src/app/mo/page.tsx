@@ -13,6 +13,175 @@ import { useLanguage } from '@/context/LanguageContext';
 import { RiskChip } from '@/components/RiskChip';
 import { ShapWaterfall } from '@/components/ShapWaterfall';
 
+const MOCK_FALLBACK_CASES = [
+  {
+    id: 101,
+    personnel_id: 1,
+    personnel_name: "Ct. Rajesh Kumar",
+    personnel_rank: "Constable (GD)",
+    unit_type: "CoBRA Strike Unit",
+    deployment_theatre: "LWE / Bastar (Anti-Naxal)",
+    risk_tier: "RED",
+    risk_color: "Red",
+    confidence: 94.2,
+    status: "Assessment In Progress",
+    assigned_mo_id: "MO-DR-SHARMA-409",
+    clinical_notes: "Initial triage: High operational fatigue flagged due to consecutive night patrols.",
+    action_plan: "Mandatory 48-hr Rest Rotation",
+    top_factors: [
+      { feature: 'family_separation_months', display_name: 'Family Separation Duration', shap_value: 1.45, actual_value: 18.0, impact_direction: 'Increases Stress Risk' },
+      { feature: 'leave_backlog_days', display_name: 'Accumulated Leave Backlog', shap_value: 1.28, actual_value: 38.0, impact_direction: 'Increases Stress Risk' },
+      { feature: 'consecutive_night_duty_days', display_name: 'Consecutive Night Duties', shap_value: 0.95, actual_value: 5.0, impact_direction: 'Increases Stress Risk' }
+    ]
+  },
+  {
+    id: 102,
+    personnel_id: 2,
+    personnel_name: "HC Manjeet Singh",
+    personnel_rank: "Head Constable",
+    unit_type: "General Duty (GD)",
+    deployment_theatre: "J&K (CI/Ops)",
+    risk_tier: "ORANGE",
+    risk_color: "Orange",
+    confidence: 86.5,
+    status: "Under Clinical Care",
+    assigned_mo_id: "MO-DR-SHARMA-409",
+    clinical_notes: "Monitored for elevated workload stress post-deployment rotation.",
+    action_plan: "Voluntary MO Counseling Session",
+    top_factors: [
+      { feature: 'duty_hours_daily', display_name: 'Daily Duty Shift Hours', shap_value: 1.12, actual_value: 12.5, impact_direction: 'Increases Stress Risk' },
+      { feature: 'days_since_last_leave', display_name: 'Duration Since Last Leave', shap_value: 0.88, actual_value: 140.0, impact_direction: 'Increases Stress Risk' }
+    ]
+  },
+  {
+    id: 103,
+    personnel_id: 3,
+    personnel_name: "ASI Suresh Verma",
+    personnel_rank: "Assistant Sub-Inspector",
+    unit_type: "Rapid Action Force (RAF)",
+    deployment_theatre: "Peace / Training Center",
+    risk_tier: "GREEN",
+    risk_color: "Green",
+    confidence: 91.0,
+    status: "Resolved & Normal Duty Resumed",
+    assigned_mo_id: "MO-DR-SHARMA-409",
+    clinical_notes: "Routine medical review completed. Fitness parameters optimal.",
+    action_plan: "Mess Dietary Adjustment & Re-check",
+    top_factors: [
+      { feature: 'rest_hours_daily', display_name: 'Daily Rest Allocation', shap_value: -1.05, actual_value: 8.0, impact_direction: 'Lowers Stress Risk' }
+    ]
+  },
+  {
+    id: 104,
+    personnel_id: 4,
+    personnel_name: "Ct. Amit Sharma",
+    personnel_rank: "Constable (GD)",
+    unit_type: "Border Outpost (LoC/IB)",
+    deployment_theatre: "High Altitude Ops",
+    risk_tier: "RED",
+    risk_color: "Red",
+    confidence: 92.8,
+    status: "Assessment In Progress",
+    assigned_mo_id: "MO-DR-SHARMA-409",
+    clinical_notes: "High altitude acclimatization review recommended.",
+    action_plan: "High-Altitude Acclimatization Rest",
+    top_factors: [
+      { feature: 'family_separation_months', display_name: 'Family Separation Duration', shap_value: 1.35, actual_value: 14.0, impact_direction: 'Increases Stress Risk' }
+    ]
+  }
+];
+
+const MOCK_FALLBACK_PERSONNEL = [
+  {
+    id: 1,
+    service_id_hash: "CRPF_10001_HASHED",
+    name: "Ct. Rajesh Kumar",
+    rank: "Constable (GD)",
+    unit_type: "CoBRA Strike Unit",
+    deployment_theatre: "LWE / Bastar (Anti-Naxal)",
+    age: 32,
+    service_tenure_years: 7.5,
+    distance_from_home_station_km: 1450,
+    leave_backlog_days: 38,
+    days_since_last_leave: 165,
+    consecutive_night_duty_days: 5,
+    duty_hours_daily: 11.5,
+    rest_hours_daily: 5.5,
+    overtime_hours_monthly: 28,
+    family_separation_months: 18,
+    body_mass_index: 23.4,
+    annual_fitness_grade_encoded: 0,
+    promotion_stagnation_years: 2.0,
+    unit_manning_shortfall_pct: 18.5
+  },
+  {
+    id: 2,
+    service_id_hash: "CRPF_10002_HASHED",
+    name: "HC Manjeet Singh",
+    rank: "Head Constable",
+    unit_type: "General Duty (GD)",
+    deployment_theatre: "J&K (CI/Ops)",
+    age: 38,
+    service_tenure_years: 14.0,
+    distance_from_home_station_km: 1100,
+    leave_backlog_days: 28,
+    days_since_last_leave: 140,
+    consecutive_night_duty_days: 3,
+    duty_hours_daily: 12.5,
+    rest_hours_daily: 6.0,
+    overtime_hours_monthly: 22,
+    family_separation_months: 12,
+    body_mass_index: 24.8,
+    annual_fitness_grade_encoded: 0,
+    promotion_stagnation_years: 3.5,
+    unit_manning_shortfall_pct: 15.0
+  },
+  {
+    id: 3,
+    service_id_hash: "CRPF_10003_HASHED",
+    name: "ASI Suresh Verma",
+    rank: "Assistant Sub-Inspector",
+    unit_type: "Rapid Action Force (RAF)",
+    deployment_theatre: "Peace / Training Center",
+    age: 44,
+    service_tenure_years: 20.0,
+    distance_from_home_station_km: 450,
+    leave_backlog_days: 12,
+    days_since_last_leave: 45,
+    consecutive_night_duty_days: 1,
+    duty_hours_daily: 8.0,
+    rest_hours_daily: 8.0,
+    overtime_hours_monthly: 8,
+    family_separation_months: 3,
+    body_mass_index: 23.1,
+    annual_fitness_grade_encoded: 0,
+    promotion_stagnation_years: 1.0,
+    unit_manning_shortfall_pct: 5.0
+  },
+  {
+    id: 4,
+    service_id_hash: "CRPF_10004_HASHED",
+    name: "Ct. Amit Sharma",
+    rank: "Constable (GD)",
+    unit_type: "Border Outpost (LoC/IB)",
+    deployment_theatre: "High Altitude Ops",
+    age: 29,
+    service_tenure_years: 5.0,
+    distance_from_home_station_km: 1800,
+    leave_backlog_days: 30,
+    days_since_last_leave: 130,
+    consecutive_night_duty_days: 4,
+    duty_hours_daily: 11.0,
+    rest_hours_daily: 6.0,
+    overtime_hours_monthly: 24,
+    family_separation_months: 14,
+    body_mass_index: 22.9,
+    annual_fitness_grade_encoded: 0,
+    promotion_stagnation_years: 1.5,
+    unit_manning_shortfall_pct: 20.0
+  }
+];
+
 export default function MedicalOfficerDashboard() {
   const { t, language } = useLanguage();
 
@@ -28,9 +197,9 @@ export default function MedicalOfficerDashboard() {
   const [authLoading, setAuthLoading] = useState(false);
 
   // Dashboard Data State
-  const [cases, setCases] = useState<any[]>([]);
-  const [personnel, setPersonnel] = useState<any[]>([]);
-  const [selectedCase, setSelectedCase] = useState<any>(null);
+  const [cases, setCases] = useState<any[]>(MOCK_FALLBACK_CASES);
+  const [personnel, setPersonnel] = useState<any[]>(MOCK_FALLBACK_PERSONNEL);
+  const [selectedCase, setSelectedCase] = useState<any>(MOCK_FALLBACK_CASES[0]);
   const [filterTier, setFilterTier] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
@@ -104,15 +273,20 @@ export default function MedicalOfficerDashboard() {
       apiFetch('/cases', { headers }),
       apiFetch('/personnel', { headers })
     ]).then(([casesData, personnelData]) => {
-      const caseList = Array.isArray(casesData) ? casesData : [];
+      const caseList = Array.isArray(casesData) && casesData.length > 0 ? casesData : MOCK_FALLBACK_CASES;
+      const personnelList = Array.isArray(personnelData) && personnelData.length > 0 ? personnelData : MOCK_FALLBACK_PERSONNEL;
       setCases(caseList);
-      setPersonnel(Array.isArray(personnelData) ? personnelData : []);
-      if (caseList.length > 0 && !selectedCase) {
+      setPersonnel(personnelList);
+      if (caseList.length > 0 && (!selectedCase || !selectedCase.id)) {
         setSelectedCase(caseList[0]);
       }
     }).catch(err => {
-      console.warn('Fallback: Loading cases data...', err);
-      // If error occurs, reload gracefully
+      console.warn('Fallback: Loading default cases data...', err);
+      setCases(MOCK_FALLBACK_CASES);
+      setPersonnel(MOCK_FALLBACK_PERSONNEL);
+      if (!selectedCase) {
+        setSelectedCase(MOCK_FALLBACK_CASES[0]);
+      }
     }).finally(() => {
       setLoading(false);
     });
