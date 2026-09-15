@@ -29,8 +29,15 @@ def get_cors_origins() -> list[str]:
     """
     if settings.CORS_ORIGINS:
         origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
+        if "*" in origins:
+            return ["*"]
         if origins:
-            return origins
+            all_origins = origins + [
+                "http://localhost:3000",
+                "http://127.0.0.1:3000",
+                "https://sentinel-frontend-app.onrender.com",
+            ]
+            return list(set(all_origins))
     return ["*"]
 
 app.add_middleware(
