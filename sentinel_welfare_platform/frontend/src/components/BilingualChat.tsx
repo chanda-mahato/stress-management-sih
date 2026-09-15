@@ -233,7 +233,7 @@ export const BilingualChat: React.FC<BilingualChatProps> = ({ isOpen, onClose })
                     <span>Tele-MANAS & Armed Forces Crisis Helpline</span>
                   </div>
                   <p className="text-[11px] text-red-100 leading-snug">
-                    Instant confidential 24x7 crisis support is available now. Connecting with a counselor will not impact your official record.
+                    An urgent confidential support notification has been dispatched to your Unit Medical Officer (MO). Medical care and counseling are strictly non-punitive and will never affect your service record.
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-center font-bold text-[11px]">
                     <a
