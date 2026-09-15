@@ -94,3 +94,8 @@ def health_check():
 def api_health_check():
     return perform_health_check()
 
+@app.get("/api/v1/health")
+def api_v1_health_check():
+    return perform_health_check()
+
+
