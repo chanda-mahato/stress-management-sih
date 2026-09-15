@@ -21,6 +21,15 @@ def test_ephemeral_chat_zero_db_persistence():
     assert resp1.status_code == 200
     assert len(resp1.json()["reply"]) > 0
     
+    # Test English message auto-detection when UI language is set to 'hi'
+    resp_en_hi = client.post("/api/chatbot/message", json={
+        "session_id": session_id,
+        "message": "i have a very high work load now a days",
+        "language": "hi"
+    })
+    assert resp_en_hi.status_code == 200
+    assert "workload" in resp_en_hi.json()["reply"].lower() or "shift" in resp_en_hi.json()["reply"].lower()
+
     resp2 = client.post("/api/chatbot/message", json={
         "session_id": session_id,
         "message": "बहुत तनाव है और घर की याद आ रही है।",
