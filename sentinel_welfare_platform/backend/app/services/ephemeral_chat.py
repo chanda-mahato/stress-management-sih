@@ -1,5 +1,6 @@
 import time
 import threading
+import re
 from typing import Dict, List, Optional
 
 class EphemeralChatManager:
@@ -52,9 +53,13 @@ class EphemeralChatManager:
         self.add_message(session_id, "user", user_message, language)
         msg_lower = user_message.lower().strip()
         
+        # Helper for word-boundary pattern matching
+        def matches_any(keywords: list[str]) -> bool:
+            return any(re.search(r"\b" + re.escape(kw) + r"\b", msg_lower) for kw in keywords)
+
         # 1. Script & Language Auto-Detection
         is_devanagari = any('\u0900' <= c <= '\u097F' for c in user_message)
-        has_hinglish_keywords = any(w in msg_lower for w in [
+        has_hinglish_keywords = matches_any([
             "namaste", "madad", "tanav", "pareshan", "neend", "ghar", 
             "thakan", "parivar", "chhutti", "kaise ho", "kya karu", "bojh", "kaam"
         ])
@@ -64,55 +69,55 @@ class EphemeralChatManager:
         else:
             eff_lang = "en"
             
-        # 2. Intent Matching & Empathetic Response Generation
-        # A. Greetings / Small Talk
-        if any(w in msg_lower for w in ["hello", "hi", "hey", "how are you", "good morning", "good evening", "namaste", "kaise ho"]):
-            if eff_lang == "hi":
-                reply = "नमस्ते जवान साथी! मैं ठीक हूँ, धन्यवाद। मैं आपकी सहायता और वेलफेयर के लिए यहाँ हमेशा उपलब्ध हूँ। आज आपकी ड्यूटी कैसी चल रही है?"
-            else:
-                reply = "Hello comrade! I am doing well, thank you. I am here to support your wellbeing anytime. How has your shift been today?"
-                
-        # B. Workload / Heavy Duty / Operational Pressure
-        elif any(w in msg_lower for w in ["work load", "workload", "heavy work", "duty", "hours", "task", "bojh", "kaam", "heavy", "hard", "shift"]):
+        # 2. Intent Matching (Prioritize Specific Domain Topics First over Greetings)
+        # A. Workload / Heavy Duty / Operational Pressure
+        if matches_any(["work load", "workload", "heavy work", "duty", "hours", "task", "bojh", "kaam", "heavy", "hard", "shift"]):
             if eff_lang == "hi":
                 reply = "अत्यधिक कार्यभार और लंबे ड्यूटी के घंटे वाकई बहुत थका देने वाले होते हैं। अपनी सेहत का ध्यान रखें और संभव हो तो पानी पिएं व छोटे ब्रेक लें। क्या आप अपनी शिफ्ट रोटेशन के बारे में साथी जवानों से बात कर सकते हैं?"
             else:
                 reply = "Managing a heavy workload and long operational hours can be extremely demanding. Remember to pace yourself and take brief hydration breaks when safety permits. Is there any way to adjust shift sharing with your unit team?"
 
-        # C. Feeling Unwell / Bad / Sick / Low Mood
-        elif any(w in msg_lower for w in ["not feeling good", "unwell", "feeling bad", "sick", "low", "sad", "depressed", "bura", "accha nahi", "kuch accha"]):
+        # B. Feeling Unwell / Bad / Sick / Low Mood
+        elif matches_any(["not feeling good", "unwell", "feeling bad", "sick", "low", "sad", "depressed", "bura", "accha nahi", "kuch accha"]):
             if eff_lang == "hi":
                 reply = "यह सुनकर दुख हुआ कि आप अच्छा महसूस नहीं कर रहे हैं। आपका स्वास्थ्य और मानसिक शांति सबसे पहले है। यदि आप अस्वस्थ या अत्यधिक चिंतित महसूस कर रहे हैं, तो कृपया यूनिट मेडिकल ऑफिसर (MO) से परामर्श लें या थोड़ा विश्राम करें।"
             else:
                 reply = "I am sorry to hear that you are not feeling good. Your health and emotional wellbeing come first. If you are feeling physically unwell or overwhelmed, please consider speaking with the Unit Medical Officer (MO) or taking time to rest."
 
-        # D. Seeking Guidance / Help / Next Steps
-        elif any(w in msg_lower for w in ["what to do", "help", "guide", "solution", "kya karu", "madad", "kaise"]):
+        # C. Seeking Guidance / Help / Next Steps
+        elif matches_any(["what to do", "help", "guide", "solution", "kya karu", "madad", "kaise"]):
             if eff_lang == "hi":
                 reply = "जब भी आपको समझ न आए कि क्या करें, तो सबसे पहले थोड़ा गहरा सांस लें और विश्राम करें। आप किसी साथी जवान से बात कर सकते हैं या यूनिट वेलफेयर ऑफिसर से मार्गदर्शन ले सकते हैं। आपको अकेले यह तनाव उठाने की जरूरत नहीं है।"
             else:
                 reply = "Whenever you feel unsure of what to do, start by taking deep breaths and focusing on basic rest. Speak with a trusted peer or consult your Unit Welfare Officer. You do not have to carry this burden alone."
 
-        # E. Stress / Anxiety / Fatigue
-        elif any(w in msg_lower for w in ["stress", "tired", "exhausted", "fatigue", "tanav", "thakan", "pareshan", "chinta"]):
+        # D. Stress / Anxiety / Fatigue
+        elif matches_any(["stress", "tired", "exhausted", "fatigue", "tanav", "thakan", "pareshan", "chinta"]):
             if eff_lang == "hi":
                 reply = "नमस्ते जवान साथी। आपके ड्यूटी के कठिन हालात और थकावट हम समझ सकते हैं। क्या आप आज थोड़ा आराम कर पाए? अपनी फैमिली से बात करने के लिए कॉल स्लॉट शेड्यूल किया गया है।"
             else:
                 reply = "Hello comrade. Operational hardship and rigorous duty hours take a real toll. Remember that decompression is vital. Have you been able to take your designated rest hours today?"
 
-        # F. Sleep Issues / Insomnia
-        elif any(w in msg_lower for w in ["sleep", "insomnia", "night", "neend", "so nahi"]):
+        # E. Sleep Issues / Insomnia
+        elif matches_any(["sleep", "insomnia", "night", "neend", "so nahi"]):
             if eff_lang == "hi":
                 reply = "रात की ड्यूटी के बाद नींद पूरी न होना स्वाभाविक है। क्या आपने यूनिट मेडिकल ऑफिसर (MO) को नींद की समस्या बताई है? जरूरत हो तो हम सहायता टीम को सतर्क कर सकते हैं।"
             else:
                 reply = "Continuous night shifts disrupt natural circadian cycles. If you are experiencing prolonged sleep deprivation, our Unit Medical Officer can offer guidance without any impact on your record."
 
-        # G. Family / Leave / Home Station
-        elif any(w in msg_lower for w in ["family", "home", "leave", "wife", "kids", "ghar", "parivar", "chhutti"]):
+        # F. Family / Leave / Home Station
+        elif matches_any(["family", "home", "leave", "wife", "kids", "ghar", "parivar", "chhutti"]):
             if eff_lang == "hi":
                 reply = "परिवार से दूर रहना सबसे कठिन मोर्चा है। आपका 'I am Okay' पिंग आपके घर तक सुरक्षित पहुँचता है। शाम के विश्राम समय में आप वीडियो कॉल से जुड़ सकते हैं।"
             else:
                 reply = "Staying separated from home station is one of the toughest parts of service. Your family has received your latest safety ping. Make sure to connect during your scheduled rest window."
+
+        # G. Greetings / Small Talk
+        elif matches_any(["hello", "hi", "hey", "how are you", "good morning", "good evening", "namaste", "kaise ho"]):
+            if eff_lang == "hi":
+                reply = "नमस्ते जवान साथी! मैं ठीक हूँ, धन्यवाद। मैं आपकी सहायता और वेलफेयर के लिए यहाँ हमेशा उपलब्ध हूँ। आज आपकी ड्यूटी कैसी चल रही है?"
+            else:
+                reply = "Hello comrade! I am doing well, thank you. I am here to support your wellbeing anytime. How has your shift been today?"
 
         # H. Dynamic Fallback (No repeated static greeting)
         else:
