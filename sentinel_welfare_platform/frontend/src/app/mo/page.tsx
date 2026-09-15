@@ -203,6 +203,7 @@ export default function MedicalOfficerDashboard() {
   const [filterTier, setFilterTier] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
+  const [crisisAlerts, setCrisisAlerts] = useState<any[]>([]);
 
   // Transition State
   const [actionPlan, setActionPlan] = useState('Mandatory 48-hr Rest Rotation');
@@ -210,6 +211,26 @@ export default function MedicalOfficerDashboard() {
   const [transitioning, setTransitioning] = useState(false);
   const [transitionSuccess, setTransitionSuccess] = useState('');
   const [caseLogs, setCaseLogs] = useState<any[]>([]);
+
+  const fetchCrisisAlerts = async () => {
+    try {
+      const data = await apiFetch('/chatbot/crisis-alerts');
+      if (Array.isArray(data)) {
+        setCrisisAlerts(data);
+      }
+    } catch (err) {
+      // Polling fallback
+    }
+  };
+
+  const handleAcknowledgeCrisisAlert = async (alertId: string) => {
+    try {
+      await apiFetch(`/chatbot/crisis-alerts/${alertId}/acknowledge`, { method: 'POST' });
+      setCrisisAlerts(prev => prev.filter(a => a.id !== alertId));
+    } catch (e) {
+      setCrisisAlerts(prev => prev.filter(a => a.id !== alertId));
+    }
+  };
 
   const handleRequestOtp = async () => {
     setAuthError('');
@@ -269,6 +290,8 @@ export default function MedicalOfficerDashboard() {
     setLoading(true);
     const headers = authToken ? { Authorization: `Bearer ${authToken}` } : {};
     
+    fetchCrisisAlerts();
+
     Promise.all([
       apiFetch('/cases', { headers }),
       apiFetch('/personnel', { headers })
@@ -291,6 +314,16 @@ export default function MedicalOfficerDashboard() {
       setLoading(false);
     });
   };
+
+  // Real-time NLP Crisis Alert Polling Interval (Every 6 seconds)
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    fetchCrisisAlerts();
+    const timer = setInterval(() => {
+      fetchCrisisAlerts();
+    }, 6000);
+    return () => clearInterval(timer);
+  }, [isLoggedIn]);
 
   useEffect(() => {
     if (selectedCase?.id) {
@@ -569,6 +602,47 @@ export default function MedicalOfficerDashboard() {
             <div className="p-3 bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-xl text-xs font-bold flex items-center gap-2 animate-fadeIn">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>{transitionSuccess}</span>
+            </div>
+          )}
+
+          {/* LIVE CHATBOT NLP CRISIS ALERT BANNER FOR MEDICAL OFFICER */}
+          {crisisAlerts.filter(a => !a.acknowledged).length > 0 && (
+            <div className="space-y-3 animate-fadeIn">
+              {crisisAlerts.filter(a => !a.acknowledged).map((alert) => (
+                <div 
+                  key={alert.id} 
+                  className="p-4 bg-red-700 text-white rounded-2xl shadow-lg border-2 border-red-500 animate-pulse flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-red-900 border border-red-400 flex items-center justify-center text-amber-300 shrink-0 mt-0.5">
+                      <AlertOctagon className="w-6 h-6 animate-bounce" />
+                    </div>
+                    <div className="space-y-1 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="font-extrabold uppercase bg-red-950 text-amber-300 px-2 py-0.5 rounded text-[10px] tracking-wider border border-red-500">
+                          CRISIS ALERT (NLP INTENT DETECTED)
+                        </span>
+                        <span className="text-red-200 font-mono text-[11px]">{alert.timestamp}</span>
+                      </div>
+                      <h4 className="font-bold text-sm text-white">
+                        {alert.soldier_name} (Session: {alert.session_id.slice(-12)}) — Trigger Phrase: <span className="underline underline-offset-2 decoration-amber-300 font-extrabold">"{alert.trigger_phrase}"</span>
+                      </h4>
+                      <p className="text-red-100 font-mono bg-red-950/70 p-2 rounded-lg border border-red-600/70 text-[11px]">
+                        Detected Message: "{alert.message_snippet}"
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => handleAcknowledgeCrisisAlert(alert.id)}
+                      className="px-4 py-2 bg-white hover:bg-red-50 text-red-900 font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <CheckCircle2 className="w-4 h-4 text-emerald-700" />
+                      <span>{t("Acknowledge Crisis Alert", "संकट चेतावनी स्वीकारें")}</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 

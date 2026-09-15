@@ -1,11 +1,23 @@
 'use client';
 import React, { useState } from 'react';
-import { MessageSquare, Send, Globe, ShieldCheck, X } from 'lucide-react';
+import { MessageSquare, Send, Globe, ShieldCheck, X, PhoneCall, AlertOctagon, HeartHandshake } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 
 interface BilingualChatProps {
   isOpen: boolean;
   onClose: () => void;
+}
+
+interface ChatMessage {
+  role: string;
+  text: string;
+  isEmergency?: boolean;
+  helplineInfo?: {
+    tele_manas_tollfree: string;
+    tele_manas_alt: string;
+    crpf_sambhav_helpline: string;
+    message: string;
+  } | null;
 }
 
 type SupportedLang = 'en' | 'hi' | 'pa' | 'bn' | 'mr' | 'ta' | 'te';
@@ -64,7 +76,7 @@ const LANG_OPTIONS: Array<{ code: SupportedLang; label: string; welcomeMsg: stri
 
 export const BilingualChat: React.FC<BilingualChatProps> = ({ isOpen, onClose }) => {
   const [language, setLanguage] = useState<SupportedLang>('hi');
-  const [messages, setMessages] = useState<Array<{ role: string; text: string }>>([
+  const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: 'assistant',
       text: LANG_OPTIONS[0].welcomeMsg
@@ -103,10 +115,20 @@ export const BilingualChat: React.FC<BilingualChatProps> = ({ isOpen, onClose })
         body: JSON.stringify({
           session_id: sessionId,
           message: userMsg,
-          language: language
+          language: language,
+          personnel_id: 1,
+          soldier_name: "Ct. Rajesh Kumar"
         })
       });
-      setMessages(prev => [...prev, { role: 'assistant', text: res.reply }]);
+      setMessages(prev => [
+        ...prev, 
+        { 
+          role: 'assistant', 
+          text: res.reply,
+          isEmergency: res.is_emergency_flagged,
+          helplineInfo: res.helpline_info
+        }
+      ]);
     } catch (err) {
       setMessages(prev => [...prev, {
         role: 'assistant',
@@ -190,17 +212,47 @@ export const BilingualChat: React.FC<BilingualChatProps> = ({ isOpen, onClose })
           {messages.map((msg, idx) => (
             <div
               key={idx}
-              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} space-y-2`}
             >
               <div
                 className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-xs leading-relaxed shadow-xs ${
                   msg.role === 'user'
                     ? 'bg-[#003366] text-white rounded-br-none font-medium'
-                    : 'bg-white border border-slate-200 text-slate-800 rounded-bl-none shadow-xs'
+                    : msg.isEmergency 
+                      ? 'bg-red-50 border-2 border-red-400 text-red-950 rounded-bl-none shadow-sm'
+                      : 'bg-white border border-slate-200 text-slate-800 rounded-bl-none shadow-xs'
                 }`}
               >
                 {msg.text}
               </div>
+
+              {msg.isEmergency && (
+                <div className="max-w-[90%] bg-red-600 text-white rounded-xl p-3 text-xs space-y-2.5 shadow-md border border-red-700 animate-fadeIn">
+                  <div className="flex items-center gap-1.5 font-bold text-xs uppercase tracking-wider text-red-100 border-b border-red-500 pb-1.5">
+                    <AlertOctagon className="w-4 h-4 text-amber-300 animate-pulse" />
+                    <span>Tele-MANAS & Armed Forces Crisis Helpline</span>
+                  </div>
+                  <p className="text-[11px] text-red-100 leading-snug">
+                    Instant confidential 24x7 crisis support is available now. Connecting with a counselor will not impact your official record.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-center font-bold text-[11px]">
+                    <a
+                      href="tel:14416"
+                      className="py-2 bg-white text-red-800 rounded-lg shadow-2xs hover:bg-red-50 flex items-center justify-center gap-1.5 transition"
+                    >
+                      <PhoneCall className="w-3.5 h-3.5 text-red-700" />
+                      <span>Tele-MANAS: 14416</span>
+                    </a>
+                    <a
+                      href="tel:1800117755"
+                      className="py-2 bg-red-900 text-white rounded-lg border border-red-700 hover:bg-red-950 flex items-center justify-center gap-1.5 transition"
+                    >
+                      <HeartHandshake className="w-3.5 h-3.5 text-amber-300" />
+                      <span>SAMBHAV: 1800-117-755</span>
+                    </a>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
           {loading && (

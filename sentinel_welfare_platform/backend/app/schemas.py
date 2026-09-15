@@ -115,12 +115,29 @@ class ChatMessageRequest(BaseModel):
     session_id: str
     message: str
     language: Optional[str] = "en"  # "en" or "hi"
+    personnel_id: Optional[int] = None
+    soldier_name: Optional[str] = None
 
 class ChatMessageResponse(BaseModel):
     session_id: str
     reply: str
     language: str
     is_emergency_flagged: bool
+    crisis_level: Optional[str] = "NONE"
+    trigger_phrase: Optional[str] = None
+    helpline_info: Optional[Dict[str, str]] = None
+
+class CrisisAlertResponse(BaseModel):
+    id: str
+    session_id: str
+    personnel_id: Optional[int] = None
+    soldier_name: Optional[str] = "Anonymous Soldier"
+    trigger_phrase: str
+    category: str
+    risk_level: str
+    message_snippet: str
+    timestamp: str
+    acknowledged: bool = False
 
 class EmergencyRequest(BaseModel):
     contact_phone: str

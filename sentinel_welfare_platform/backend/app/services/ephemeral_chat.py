@@ -1,18 +1,35 @@
 import time
 import threading
 import re
-from typing import Dict, List, Optional
+import datetime
+import uuid
+from typing import Dict, List, Optional, Tuple, Any
+from app.services.crisis_nlp import crisis_nlp_engine
 
 class EphemeralChatManager:
     """
     In-memory session manager with automatic TTL eviction.
     Architectural guarantee: zero message rows are ever saved to the database.
     Supports 7 languages: English (en), Hindi (hi), Punjabi (pa), Bengali (bn), Marathi (mr), Tamil (ta), Telugu (te).
+    Includes real-time NLP crisis intent detection & Medical Officer alerting.
     """
     def __init__(self, session_ttl_seconds: int = 300):
         self.ttl = session_ttl_seconds
         self._sessions: Dict[str, Dict] = {}
+        self._crisis_alerts: List[Dict] = []
         self._lock = threading.Lock()
+
+    def get_active_crisis_alerts(self) -> List[Dict]:
+        with self._lock:
+            return list(self._crisis_alerts)
+
+    def acknowledge_crisis_alert(self, alert_id: str) -> bool:
+        with self._lock:
+            for alert in self._crisis_alerts:
+                if alert["id"] == alert_id:
+                    alert["acknowledged"] = True
+                    return True
+            return False
 
     def _purge_expired(self):
         now = time.time()
@@ -50,7 +67,14 @@ class EphemeralChatManager:
             if session_id in self._sessions:
                 del self._sessions[session_id]
 
-    def generate_reply(self, session_id: str, user_message: str, language: str = "en") -> str:
+    def generate_reply(
+        self, 
+        session_id: str, 
+        user_message: str, 
+        language: str = "en", 
+        personnel_id: Optional[int] = None, 
+        soldier_name: Optional[str] = None
+    ) -> Tuple[str, Dict[str, Any]]:
         self.add_message(session_id, "user", user_message, language)
         msg_lower = user_message.lower().strip()
         
@@ -80,6 +104,38 @@ class EphemeralChatManager:
 
         def get_reply(replies: dict) -> str:
             return replies.get(eff_lang, replies.get("en", ""))
+
+        # 2. Real-Time NLP Crisis Intent Detection
+        nlp_res = crisis_nlp_engine.analyze(user_message)
+
+        if nlp_res["is_crisis"]:
+            alert_obj = {
+                "id": f"ALERT_{uuid.uuid4().hex[:8]}",
+                "session_id": session_id,
+                "personnel_id": personnel_id,
+                "soldier_name": soldier_name or "Anonymous Soldier",
+                "trigger_phrase": nlp_res["trigger_phrase"],
+                "category": nlp_res["category"],
+                "risk_level": nlp_res["risk_level"],
+                "message_snippet": user_message[:120],
+                "timestamp": datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
+                "acknowledged": False
+            }
+            with self._lock:
+                if not any(a["session_id"] == session_id and a["trigger_phrase"] == nlp_res["trigger_phrase"] for a in self._crisis_alerts):
+                    self._crisis_alerts.insert(0, alert_obj)
+
+            reply = get_reply({
+                "hi": "जय हिंद जवान साथी! कृपया शांत रहें और अपना ध्यान रखें। आपकी सुरक्षा और जीवन सर्वोपरि हैं। यदि आप अत्यधिक तनाव या निराशा महसूस कर रहे हैं, तो कृपया टेली-मानस सहायता हेल्पलाइन 14416 / 1800-891-4416 पर बात करें या तुरंत अपने मेडिकल ऑफिसर से संपर्क करें। हम आपके साथ हैं।",
+                "pa": "ਸਤਿ ਸ਼੍ਰੀ ਅਕਾਲ ਜਵਾਨ ਵੀਰ! ਕਿਰਪਾ ਕਰਕੇ ਸ਼ਾਂਤ ਰਹੋ। ਤੁਹਾਡੀ ਸੁਰੱਖਿਆ ਸਭ ਤੋਂ ਮਹੱਤਵਪੂਰਨ ਹੈ। ਜੇਕਰ ਤੁਸੀਂ ਬਹੁਤ ਪਰੇਸ਼ਾਨ ਹੋ, ਤਾਂ ਟੈਲੀ-ਮਾਨਸ ਹੈਲਪਲਾਈਨ 14416 'ਤੇ ਸੰਪਰਕ ਕਰੋ ਜਾਂ ਆਪਣੇ ਯੂਨਿਟ ਡਾਕਟਰ ਨਾਲ ਗੱਲ ਕਰੋ।",
+                "bn": "জয় হিন্দ জওয়ান ভাই! অনুগ্রহ করে শান্ত থাকুন। আপনার জীবন আমাদের কাছে অত্যন্ত মূল্যবান। কোনো সংকটে থাকলে টেলি-মানস হেল্পলাইন ১৪৪১৬ বা ইউনিট মেডিকেল অফিসারের সাথে কথা বলুন।",
+                "mr": "जय हिंद जवान बंधू! कृपया शांत राहा. तुमचे आरोग्य आणि जीवन अत्यंत मोलाचे आहे. तातडीच्या मदतीसाठी टेलि-मानस हेल्पलाइन १४४१६ किंवा युनिट मेडिकल ऑफिसरशी संपर्क साधा.",
+                "ta": "ஜெய் ஹிந்த் தோழரே! தயவுசெய்து அமைதியாக இருங்கள். உங்கள் வாழ்க்கை மிகவும் முக்கியமானது. உதவிக்கு டெலி-மானஸ் 14416 அல்லது மருத்துவ அதிகாரியை தொடர்பு கொள்ளவும்.",
+                "te": "జై హింద్ సోదరా! దయచేసి ప్రశాంతంగా ఉండండి. మీ జీవితం చాలా విలువైనది. అత్యవసర సహాయం కోసం టెలి-మానస్ 14416 లేదా వైద్య అధికారిని సంప్రదించండి.",
+                "en": "Jai Hind comrade! Please stay safe and take a moment to pause. Your life and wellbeing are irreplaceable. If you are experiencing intense despair or crisis, please immediately connect with the Tele-MANAS Crisis Helpline (14416 / 1800-891-4416) or speak directly with your Unit Medical Officer. You are not alone."
+            })
+            self.add_message(session_id, "assistant", reply, language)
+            return reply, nlp_res
 
         # 2. Intent Matching
         # A. Workload / Heavy Duty / Operational Pressure
@@ -179,6 +235,6 @@ class EphemeralChatManager:
             })
 
         self.add_message(session_id, "assistant", reply, language)
-        return reply
+        return reply, nlp_res
 
 chat_manager = EphemeralChatManager(session_ttl_seconds=300)
