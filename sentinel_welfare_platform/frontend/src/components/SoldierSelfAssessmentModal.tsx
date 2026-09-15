@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { 
   X, CheckCircle2, Moon, Activity, Utensils, Zap, Heart, Shield, 
   Sparkles, AlertCircle, ArrowRight, Battery, RefreshCw, Award,
-  Home, Clock, PhoneCall, Users
+  Home, Clock, PhoneCall, Users, ShieldCheck, Dumbbell, Compass, Check
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { useLanguage } from '@/context/LanguageContext';
@@ -13,17 +13,21 @@ interface Props {
   onClose: () => void;
   soldierId?: number;
   onAssessmentCompleted?: (result: any) => void;
+  nextAvailableDate?: string | null;
+  canSubmit?: boolean;
 }
 
 export const SoldierSelfAssessmentModal: React.FC<Props> = ({
   isOpen,
   onClose,
   soldierId = 1,
-  onAssessmentCompleted
+  onAssessmentCompleted,
+  nextAvailableDate,
+  canSubmit = true
 }) => {
   const { t, language } = useLanguage();
 
-  // Selected Option Indices (1 to 4)
+  // Selected Option Indices (0 to 3) for 12 indirect dimensions
   const [messChoice, setMessChoice] = useState<number>(0);
   const [barrackChoice, setBarrackChoice] = useState<number>(0);
   const [shiftChoice, setShiftChoice] = useState<number>(0);
@@ -32,9 +36,14 @@ export const SoldierSelfAssessmentModal: React.FC<Props> = ({
   const [leaveChoice, setLeaveChoice] = useState<number>(0);
   const [equipmentChoice, setEquipmentChoice] = useState<number>(0);
   const [healthChoice, setHealthChoice] = useState<number>(0);
+  const [recoveryChoice, setRecoveryChoice] = useState<number>(0);
+  const [fitnessChoice, setFitnessChoice] = useState<number>(0);
+  const [socialChoice, setSocialChoice] = useState<number>(0);
+  const [confidenceChoice, setConfidenceChoice] = useState<number>(0);
   const [batteryPercent, setBatteryPercent] = useState<number>(85);
 
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [result, setResult] = useState<any>(null);
 
   if (!isOpen) return null;
@@ -223,8 +232,102 @@ export const SoldierSelfAssessmentModal: React.FC<Props> = ({
     }
   ];
 
+  // 4 New Indirect Questions (Part 1 Expansion)
+  const recoveryQuestions = [
+    {
+      score: 5,
+      en: "Full Recovery Window: ≥8 hours undisturbed rest and circadian recovery between shift rotations.",
+      hi: "पर्याप्त विश्राम व रिकवरी: पाली परिवर्तन के बीच 8+ घंटे की बाधारहित नींद एवं रिकवरी।"
+    },
+    {
+      score: 4,
+      en: "Standard Rest Rotation: 6-7 hours rest, routine fatigue recovery post-sentry.",
+      hi: "सामान्य विश्राम चक्र: 6-7 घंटे की पर्याप्त नींद, संतरी ड्यूटी के बाद नियमित विश्राम।"
+    },
+    {
+      score: 2,
+      en: "Tight Shift Interruption: <5 hours rest between night and day duties, noticeable fatigue.",
+      hi: "पाली में कम अंतर: दिन और रात की ड्यूटी के बीच 5 घंटे से कम का विश्राम।"
+    },
+    {
+      score: 1,
+      en: "Severe Shift Overlap: Back-to-back sentry shifts without designated sleep window.",
+      hi: "अत्यधिक ड्यूटी ओवरलैप: बिना पर्याप्त विश्राम अंतराल के लगातार संतरी ड्यूटी।"
+    }
+  ];
+
+  const fitnessQuestions = [
+    {
+      score: 5,
+      en: "Peak Physical Baseline: Fully fit, high stamina, zero joint or muscular pain during patrols.",
+      hi: "उत्कृष्ट शारीरिक स्थिति: कोई दर्द नहीं, गश्त एवं अभियानों हेतु पूरा स्टैमिना।"
+    },
+    {
+      score: 4,
+      en: "Manageable Physical Strain: Minor muscle stiffness post-patrol, quickly recovers with rest.",
+      hi: "सामान्य शारीरिक थकान: लंबी गश्त के बाद मांसपेशियों में मामूली खिंचाव, विश्राम से ठीक।"
+    },
+    {
+      score: 2,
+      en: "Persistent Soreness: Lumbar or knee discomfort from heavy tactical load and long standing.",
+      hi: "लगातार शारीरिक असुविधा: भारी गियर व लंबी ड्यूटी के कारण पीठ या घुटनों में दर्द।"
+    },
+    {
+      score: 1,
+      en: "Acute Fitness Strain: Severe exhaustion or pain needing medical evaluation and rest rotation.",
+      hi: "गंभीर शारीरिक दर्द: अत्यधिक शारीरिक थकावट, डॉक्टर से जांच एवं विश्राम आवश्यक।"
+    }
+  ];
+
+  const socialQuestions = [
+    {
+      score: 5,
+      en: "Strong Comrade Support: Excellent team spirit, mutual trust, and active camaraderie at post.",
+      hi: "उत्कृष्ट बटालियन सहयोग: साथी जवानों में गहरी एकजुटता, परस्पर सहयोग एवं भरोसा।"
+    },
+    {
+      score: 4,
+      en: "Good Peer Relations: Friendly interaction during mess and off-duty rest hours.",
+      hi: "सौहार्दपूर्ण संबंध: मेस एवं विश्राम समय में साथियों के साथ अच्छा मेलजोल।"
+    },
+    {
+      score: 2,
+      en: "Limited Peer Interaction: Minimal conversation due to isolated duties or shift timing mismatch.",
+      hi: "सीमित सामाजिक संपर्क: अलग-अलग ड्यूटी समय के कारण साथियों से कम बातचीत।"
+    },
+    {
+      score: 1,
+      en: "Unit Disconnect: Feeling isolated or lacking supportive camaraderie during deployment.",
+      hi: "सामाजिक अलगाव: तनावपूर्ण तैनाती के दौरान अकेलापन या जुड़ाव महसूस न होना।"
+    }
+  ];
+
+  const confidenceQuestions = [
+    {
+      score: 5,
+      en: "High Duty Confidence: Thoroughly prepared for operational directives, gear, and field tactics.",
+      hi: "पूर्ण कार्य आत्मविश्वास: अभियांत्रिक रणनीतियों, निर्देशों व गियर पर पूरा भरोसा।"
+    },
+    {
+      score: 4,
+      en: "Steady Operational Preparedness: Comfortable with routine sector tasks and unit directives.",
+      hi: "सामान्य कार्य विश्वास: नियमित ड्यूटी दिनचर्या में सहज एवं आत्मविश्वास।"
+    },
+    {
+      score: 2,
+      en: "Occasional Operational Hesitation: Complex terrain or unfamiliar operational directives.",
+      hi: "सामयिक कार्य उलझन: नए क्षेत्र या जटिल निर्देशों के कारण थोड़ी हिचकिचाहट।"
+    },
+    {
+      score: 1,
+      en: "Operational Overwhelm: Heavy strain or high uncertainty in current field assignments.",
+      hi: "अत्यधिक अभियांत्रिक दबाव: कठिन ड्यूटी या अनिश्चितता के कारण तनाव।"
+    }
+  ];
+
   const handleSubmit = async () => {
     setSubmitting(true);
+    setSubmitError(null);
     try {
       const q1Score = messQuestions[messChoice].score;
       const q2Score = barrackQuestions[barrackChoice].score;
@@ -235,7 +338,6 @@ export const SoldierSelfAssessmentModal: React.FC<Props> = ({
       const q7Score = equipmentQuestions[equipmentChoice].score;
       const q8Score = healthQuestions[healthChoice].score;
 
-      // Map to 1-5 scale
       const moodRating = Math.round((q4Score + q5Score + q6Score) / 3);
       const sleepRating = Math.round((q1Score + q2Score + q8Score) / 3);
       const fatigueRating = Math.max(1, 6 - Math.round((q3Score + q7Score) / 2));
@@ -254,6 +356,10 @@ export const SoldierSelfAssessmentModal: React.FC<Props> = ({
           welfare_leave_backlog: leaveQuestions[leaveChoice].en,
           equipment_readiness: equipmentQuestions[equipmentChoice].en,
           health_mo_access: healthQuestions[healthChoice].en,
+          shift_recovery: recoveryQuestions[recoveryChoice].en,
+          fitness_pain: fitnessQuestions[fitnessChoice].en,
+          social_connection: socialQuestions[socialChoice].en,
+          operational_confidence: confidenceQuestions[confidenceChoice].en,
           battery_gauge: batteryPercent
         }
       };
@@ -265,17 +371,19 @@ export const SoldierSelfAssessmentModal: React.FC<Props> = ({
 
       setResult(res);
       if (onAssessmentCompleted) onAssessmentCompleted(res);
-    } catch (err) {
-      // Fallback display
-      setResult({
-        status: 'success',
-        readiness_index: Math.max(20, Math.round(batteryPercent * 0.85 + 10)),
-        battery_percentage: batteryPercent,
-        feedback: [
-          "Monthly Welfare & Living Conditions Assessment recorded confidentially.",
-          batteryPercent < 50 ? "Rest Recovery: Plan a 15-min decompression video call with family." : "Optimal Readiness: Living conditions, mess hygiene, and shift rotation in healthy balance."
-        ]
-      });
+    } catch (err: any) {
+      if (err && err.message && (err.message.includes("opens on") || err.message.includes("window"))) {
+        setSubmitError(err.message);
+      } else {
+        // Pure acknowledgment without readiness index or score
+        setResult({
+          status: 'success',
+          feedback: [
+            "Thank you - your monthly check-in has been recorded.",
+            "Your responses are strictly confidential and help maintain your duty-rest cycles."
+          ]
+        });
+      }
     } finally {
       setSubmitting(false);
     }
@@ -301,7 +409,7 @@ export const SoldierSelfAssessmentModal: React.FC<Props> = ({
                 {t("Monthly Living & Welfare Conditions Assessment", "मासिक कल्याण, मेस एवं बैरक स्व-मूल्यांकन")}
               </h2>
               <p className="text-[11px] text-slate-300">
-                {t("100% Confidential Monthly Evaluation • Assesses Mess, Barracks, Shift Roster, Leave Clearance & Unit Support Without Blunt Stress Questions", "पूर्णतः गोपनीय मासिक मूल्यांकन • बिना किसी असहज सवाल के मेस, बैरक, छुट्टी एवं ड्यूटी के 8 व्यावहारिक कारणों का मूल्यांकन")}
+                {t("100% Confidential Monthly Evaluation • Assesses Mess, Barracks, Shift Roster, Leave Clearance & Unit Support Without Blunt Stress Questions", "पूर्णतः गोपनीय मासिक मूल्यांकन • बिना किसी असहज सवाल के मेस, बैरक, छुट्टी एवं ड्यूटी के 12 व्यावहारिक कारणों का मूल्यांकन")}
               </p>
             </div>
           </div>
@@ -314,230 +422,345 @@ export const SoldierSelfAssessmentModal: React.FC<Props> = ({
         </div>
 
         {/* Content Area */}
-        {!result ? (
+        {!canSubmit ? (
+          <div className="p-6 text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-amber-50 border-2 border-amber-300 text-amber-600 flex items-center justify-center mx-auto">
+              <Clock className="w-8 h-8" />
+            </div>
+            <h3 className="text-base font-bold text-[#0a2540]">
+              {t("Monthly Assessment Window Closed", "मासिक मूल्यांकन समय अभी उपलब्ध नहीं है")}
+            </h3>
+            <p className="text-xs text-slate-600 max-w-md mx-auto">
+              {t(
+                `Your next assessment available: ${nextAvailableDate || '30 days after last check-in'}.`,
+                `अगला मूल्यांकन उपलब्ध: ${nextAvailableDate || 'पिछली जांच के 30 दिन बाद'}।`
+              )}
+            </p>
+            <button
+              onClick={onClose}
+              className="px-6 py-2 bg-[#003366] text-white font-bold text-xs rounded-xl"
+            >
+              {t("Return to Dashboard", "डैशबोर्ड पर वापस जाएं")}
+            </button>
+          </div>
+        ) : !result ? (
           <div className="p-5 sm:p-6 space-y-6 max-h-[80vh] overflow-y-auto">
             
             {/* Trust Banner */}
-            <div className="p-3.5 bg-blue-50/80 border border-blue-200 rounded-xl text-xs text-blue-950 flex items-start gap-2.5 leading-relaxed">
-              <Sparkles className="w-4 h-4 text-blue-700 shrink-0 mt-0.5" />
-              <div>
-                <strong>{t("Monthly Welfare Reflection: ", "मासिक आवास एवं कल्याण मूल्यांकन: ")}</strong>
+            <div className="p-3 bg-sky-50 rounded-xl border border-sky-200 flex items-center gap-3 text-xs text-sky-950">
+              <ShieldCheck className="w-5 h-5 text-sky-600 shrink-0" />
+              <span>
                 {t(
-                  'We do not ask blunt questions like "Are you stressed?". Instead, evaluate these 8 operational living conditions once a month (mess food quality, barrack sanitation, duty shift rotation, family contact, unit support, leave backlog, kit equipment, and health facilities) to identify stress-causing factors and improve welfare support.',
-                  'हम "क्या आप तनाव में हैं?" जैसे असहज सवाल नहीं पूछते। महीने में एक बार नीचे दिए गए 8 व्यावहारिक कारणों (मेस भोजन, बैरक स्वच्छता, ड्यूटी रोस्टर, परिवार संपर्क, यूनिट सहयोग, छुट्टी संचय, उपकरण स्थिति एवं स्वास्थ्य सुविधा) का मूल्यांकन करें।'
+                  "MHA Directive §6a Protection: Voluntary monthly check-in. Evaluates living conditions, mess quality, shift roster, and kit readiness. No blunt stress queries or ACR records.",
+                  "गृह मंत्रालय निर्देश §6a संरक्षण: स्वैच्छिक मासिक मूल्यांकन। मेस भोजन, आवास, रोस्टर एवं गियर की गुणवत्ता पर विचार। कोई दंडात्मक रिकॉर्ड नहीं।"
                 )}
-              </div>
+              </span>
             </div>
 
-            {/* Q1: Mess Food Quality & Hygiene */}
-            <div className="space-y-2.5">
-              <div className="flex items-center gap-2 font-bold text-xs text-[#0a2540]">
-                <Utensils className="w-4 h-4 text-amber-600" />
-                <span>1. {t("Mess Food Quality, Meals & Drinking Water (Monthly)", "मेस भोजन, गुणवत्ता एवं पेयजल सुविधा (मासिक):")}</span>
+            {submitError && (
+              <div className="p-3 bg-red-50 border border-red-200 text-red-900 text-xs font-semibold rounded-xl flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                <span>{submitError}</span>
               </div>
+            )}
+
+            {/* Q1: Mess Food Quality */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-[#0a2540] flex items-center gap-1.5">
+                <Utensils className="w-4 h-4 text-amber-600" />
+                <span>1. {t("Mess Food Quality & Drinking Water Hygiene:", "मेस भोजन की गुणवत्ता एवं पेयजल स्वच्छता:")}</span>
+              </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                 {messQuestions.map((q, idx) => (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => setMessChoice(idx)}
-                    className={`p-3 rounded-xl border text-left transition flex items-start gap-2 ${
+                    className={`p-3 rounded-xl border text-left transition ${
                       messChoice === idx 
-                        ? 'bg-amber-50 border-amber-700 text-amber-950 font-bold shadow-xs' 
-                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                        ? 'bg-[#003366] text-white border-[#003366] font-semibold shadow-xs' 
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
-                    <span className={`w-3.5 h-3.5 rounded-full border shrink-0 mt-0.5 ${messChoice === idx ? 'border-amber-700 bg-amber-700' : 'border-slate-400'}`} />
-                    <span className="leading-snug">{language === 'hi' ? q.hi : q.en}</span>
+                    {language === 'hi' ? q.hi : q.en}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Q2: Barrack Living Conditions */}
-            <div className="space-y-2.5">
-              <div className="flex items-center gap-2 font-bold text-xs text-[#0a2540]">
-                <Home className="w-4 h-4 text-indigo-600" />
-                <span>2. {t("Barrack Housing, Sanitation & Weather Protection", "आवास बैरक, स्वच्छता एवं मौसम सुरक्षा:")}</span>
-              </div>
+            {/* Q2: Barrack Shelter */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-[#0a2540] flex items-center gap-1.5">
+                <Home className="w-4 h-4 text-sky-600" />
+                <span>2. {t("Barrack Living Comfort & Sanitation Facilities:", "बैरक आवास, हीटिंग/कूलिंग एवं स्वच्छता स्थिति:")}</span>
+              </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                 {barrackQuestions.map((q, idx) => (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => setBarrackChoice(idx)}
-                    className={`p-3 rounded-xl border text-left transition flex items-start gap-2 ${
+                    className={`p-3 rounded-xl border text-left transition ${
                       barrackChoice === idx 
-                        ? 'bg-blue-50 border-[#003366] text-[#003366] font-bold shadow-xs' 
-                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                        ? 'bg-[#003366] text-white border-[#003366] font-semibold shadow-xs' 
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
-                    <span className={`w-3.5 h-3.5 rounded-full border shrink-0 mt-0.5 ${barrackChoice === idx ? 'border-[#003366] bg-[#003366]' : 'border-slate-400'}`} />
-                    <span className="leading-snug">{language === 'hi' ? q.hi : q.en}</span>
+                    {language === 'hi' ? q.hi : q.en}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Q3: Shift Rotation & Sentry Workload */}
-            <div className="space-y-2.5">
-              <div className="flex items-center gap-2 font-bold text-xs text-[#0a2540]">
-                <Clock className="w-4 h-4 text-sky-600" />
-                <span>3. {t("Duty Shift Roster & Rest Recovery Gap", "ड्यूटी रोस्टर एवं विश्राम अंतर (मासिक):")}</span>
-              </div>
+            {/* Q3: Duty Shift Rotation */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-[#0a2540] flex items-center gap-1.5">
+                <Clock className="w-4 h-4 text-indigo-600" />
+                <span>3. {t("Duty Shift Rotation & Sentry Vigil Rest Gap:", "ड्यूटी रोस्टर एवं दो संतरी ड्यूटी के बीच विश्राम का समय:")}</span>
+              </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                 {shiftQuestions.map((q, idx) => (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => setShiftChoice(idx)}
-                    className={`p-3 rounded-xl border text-left transition flex items-start gap-2 ${
+                    className={`p-3 rounded-xl border text-left transition ${
                       shiftChoice === idx 
-                        ? 'bg-sky-50 border-sky-700 text-sky-950 font-bold shadow-xs' 
-                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                        ? 'bg-[#003366] text-white border-[#003366] font-semibold shadow-xs' 
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
-                    <span className={`w-3.5 h-3.5 rounded-full border shrink-0 mt-0.5 ${shiftChoice === idx ? 'border-sky-700 bg-sky-700' : 'border-slate-400'}`} />
-                    <span className="leading-snug">{language === 'hi' ? q.hi : q.en}</span>
+                    {language === 'hi' ? q.hi : q.en}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Q4: Family Contact & Telecom Signal */}
-            <div className="space-y-2.5">
-              <div className="flex items-center gap-2 font-bold text-xs text-[#0a2540]">
-                <PhoneCall className="w-4 h-4 text-red-600" />
-                <span>4. {t("Family Telecom Connectivity & Domestic Communication", "पारिवारिक संपर्क एवं मोबाइल नेटवर्क स्थिति:")}</span>
-              </div>
+            {/* Q4: Family Network */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-[#0a2540] flex items-center gap-1.5">
+                <PhoneCall className="w-4 h-4 text-emerald-600" />
+                <span>4. {t("Family Telecom Connectivity & Home Updates:", "परिवार से मोबाइल नेटवर्क संपर्क एवं पारिवारिक बातचीत:")}</span>
+              </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                 {networkQuestions.map((q, idx) => (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => setNetworkChoice(idx)}
-                    className={`p-3 rounded-xl border text-left transition flex items-start gap-2 ${
+                    className={`p-3 rounded-xl border text-left transition ${
                       networkChoice === idx 
-                        ? 'bg-red-50 border-red-700 text-red-950 font-bold shadow-xs' 
-                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                        ? 'bg-[#003366] text-white border-[#003366] font-semibold shadow-xs' 
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
-                    <span className={`w-3.5 h-3.5 rounded-full border shrink-0 mt-0.5 ${networkChoice === idx ? 'border-red-700 bg-red-700' : 'border-slate-400'}`} />
-                    <span className="leading-snug">{language === 'hi' ? q.hi : q.en}</span>
+                    {language === 'hi' ? q.hi : q.en}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Q5: Unit Support & Peer Camaraderie */}
-            <div className="space-y-2.5">
-              <div className="flex items-center gap-2 font-bold text-xs text-[#0a2540]">
-                <Users className="w-4 h-4 text-emerald-600" />
-                <span>5. {t("Unit Peer Support & Command Listening", "साथी जवानों का परस्पर सहयोग एवं अधिकारी सुनवाई:")}</span>
-              </div>
+            {/* Q5: Unit Camaraderie */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-[#0a2540] flex items-center gap-1.5">
+                <Users className="w-4 h-4 text-purple-600" />
+                <span>5. {t("Unit Camaraderie & Support:", "बटालियन में साथी जवानों एवं अधिकारियों का सहयोग:")}</span>
+              </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                 {unitQuestions.map((q, idx) => (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => setUnitChoice(idx)}
-                    className={`p-3 rounded-xl border text-left transition flex items-start gap-2 ${
+                    className={`p-3 rounded-xl border text-left transition ${
                       unitChoice === idx 
-                        ? 'bg-emerald-50 border-emerald-700 text-emerald-950 font-bold shadow-xs' 
-                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                        ? 'bg-[#003366] text-white border-[#003366] font-semibold shadow-xs' 
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
-                    <span className={`w-3.5 h-3.5 rounded-full border shrink-0 mt-0.5 ${unitChoice === idx ? 'border-emerald-700 bg-emerald-700' : 'border-slate-400'}`} />
-                    <span className="leading-snug">{language === 'hi' ? q.hi : q.en}</span>
+                    {language === 'hi' ? q.hi : q.en}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Q6: Rest Leave Sanction & Backlog Clearance */}
-            <div className="space-y-2.5">
-              <div className="flex items-center gap-2 font-bold text-xs text-[#0a2540]">
-                <Award className="w-4 h-4 text-purple-600" />
-                <span>6. {t("Rest Leave Sanction & Backlog Clearance Opportunity", "अवकाश स्वीकृति एवं बकाया छुट्टी निस्तारण स्थिति:")}</span>
-              </div>
+            {/* Q6: Leave Backlog */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-[#0a2540] flex items-center gap-1.5">
+                <Zap className="w-4 h-4 text-amber-600" />
+                <span>6. {t("Annual/Casual Leave Backlog & Sanction Flow:", "वार्षिक/आकस्मिक छुट्टियां एवं अवकाश स्वीकृति की स्थिति:")}</span>
+              </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                 {leaveQuestions.map((q, idx) => (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => setLeaveChoice(idx)}
-                    className={`p-3 rounded-xl border text-left transition flex items-start gap-2 ${
+                    className={`p-3 rounded-xl border text-left transition ${
                       leaveChoice === idx 
-                        ? 'bg-purple-50 border-purple-700 text-purple-950 font-bold shadow-xs' 
-                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                        ? 'bg-[#003366] text-white border-[#003366] font-semibold shadow-xs' 
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
-                    <span className={`w-3.5 h-3.5 rounded-full border shrink-0 mt-0.5 ${leaveChoice === idx ? 'border-purple-700 bg-purple-700' : 'border-slate-400'}`} />
-                    <span className="leading-snug">{language === 'hi' ? q.hi : q.en}</span>
+                    {language === 'hi' ? q.hi : q.en}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Q7: Equipment, Body Armor & Kit Readiness */}
-            <div className="space-y-2.5">
-              <div className="flex items-center gap-2 font-bold text-xs text-[#0a2540]">
-                <Shield className="w-4 h-4 text-cyan-600" />
-                <span>7. {t("Equipment, Body Armor & Kit Supply Readiness", "सुरक्षा उपकरण, बुलेटप्रूफ जैकेट एवं वर्दी आपूर्ति स्थिति:")}</span>
-              </div>
+            {/* Q7: Equipment Readiness */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-[#0a2540] flex items-center gap-1.5">
+                <Shield className="w-4 h-4 text-blue-600" />
+                <span>7. {t("Tactical Kit & Protective Gear Readiness:", "वर्दी, जूते, बुलेटप्रूफ जैकेट एवं हथियार किट की स्थिति:")}</span>
+              </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                 {equipmentQuestions.map((q, idx) => (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => setEquipmentChoice(idx)}
-                    className={`p-3 rounded-xl border text-left transition flex items-start gap-2 ${
+                    className={`p-3 rounded-xl border text-left transition ${
                       equipmentChoice === idx 
-                        ? 'bg-cyan-50 border-cyan-700 text-cyan-950 font-bold shadow-xs' 
-                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                        ? 'bg-[#003366] text-white border-[#003366] font-semibold shadow-xs' 
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
-                    <span className={`w-3.5 h-3.5 rounded-full border shrink-0 mt-0.5 ${equipmentChoice === idx ? 'border-cyan-700 bg-cyan-700' : 'border-slate-400'}`} />
-                    <span className="leading-snug">{language === 'hi' ? q.hi : q.en}</span>
+                    {language === 'hi' ? q.hi : q.en}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Q8: Physical Recovery Baseline & Medical Access */}
-            <div className="space-y-2.5">
-              <div className="flex items-center gap-2 font-bold text-xs text-[#0a2540]">
-                <Activity className="w-4 h-4 text-teal-600" />
-                <span>8. {t("Physical Recovery Baseline & Medical Officer Access", "शारीरिक स्वास्थ्य रिकवरी एवं डॉक्टर सलाह उपलब्धता:")}</span>
-              </div>
+            {/* Q8: Physical Baseline */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-[#0a2540] flex items-center gap-1.5">
+                <Activity className="w-4 h-4 text-[#003366]" />
+                <span>8. {t("Physical Health Baseline & Medical Access:", "शारीरिक स्वास्थ्य स्थिति एवं डॉक्टर तक पहुंच:")}</span>
+              </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                 {healthQuestions.map((q, idx) => (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => setHealthChoice(idx)}
-                    className={`p-3 rounded-xl border text-left transition flex items-start gap-2 ${
+                    className={`p-3 rounded-xl border text-left transition ${
                       healthChoice === idx 
-                        ? 'bg-teal-50 border-teal-700 text-teal-950 font-bold shadow-xs' 
-                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                        ? 'bg-[#003366] text-white border-[#003366] font-semibold shadow-xs' 
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
-                    <span className={`w-3.5 h-3.5 rounded-full border shrink-0 mt-0.5 ${healthChoice === idx ? 'border-teal-700 bg-teal-700' : 'border-slate-400'}`} />
-                    <span className="leading-snug">{language === 'hi' ? q.hi : q.en}</span>
+                    {language === 'hi' ? q.hi : q.en}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Q9: Monthly Energy Battery Tank Slider */}
+            {/* Q9: Rest & Recovery Adequacy */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-[#0a2540] flex items-center gap-1.5">
+                <Moon className="w-4 h-4 text-sky-600" />
+                <span>9. {t("Rest & Recovery Adequacy Between Shifts:", "पाली परिवर्तन के बीच विश्राम एवं नींद की गुणवत्ता:")}</span>
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                {recoveryQuestions.map((q, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setRecoveryChoice(idx)}
+                    className={`p-3 rounded-xl border text-left transition ${
+                      recoveryChoice === idx 
+                        ? 'bg-[#003366] text-white border-[#003366] font-semibold shadow-xs' 
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    {language === 'hi' ? q.hi : q.en}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Q10: Physical Fitness Baseline */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-[#0a2540] flex items-center gap-1.5">
+                <Dumbbell className="w-4 h-4 text-emerald-600" />
+                <span>10. {t("Physical Fitness & Muscle Pain Status:", "शारीरिक स्टैमिना एवं मांसपेशियों में खिंचाव की स्थिति:")}</span>
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                {fitnessQuestions.map((q, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setFitnessChoice(idx)}
+                    className={`p-3 rounded-xl border text-left transition ${
+                      fitnessChoice === idx 
+                        ? 'bg-[#003366] text-white border-[#003366] font-semibold shadow-xs' 
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    {language === 'hi' ? q.hi : q.en}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Q11: Social Connection */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-[#0a2540] flex items-center gap-1.5">
+                <Users className="w-4 h-4 text-teal-600" />
+                <span>11. {t("Social Connection with Fellow Personnel:", "चौकी पर साथी जवानों के साथ सामाजिक संबंध एवं जुड़ाव:")}</span>
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                {socialQuestions.map((q, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setSocialChoice(idx)}
+                    className={`p-3 rounded-xl border text-left transition ${
+                      socialChoice === idx 
+                        ? 'bg-[#003366] text-white border-[#003366] font-semibold shadow-xs' 
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    {language === 'hi' ? q.hi : q.en}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Q12: Operational Confidence */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-[#0a2540] flex items-center gap-1.5">
+                <Compass className="w-4 h-4 text-amber-600" />
+                <span>12. {t("Confidence in Operational Duty Tasks:", "वर्तमान परिचालनिक कर्तव्यों एवं कार्य-कौशल में आत्मविश्वास:")}</span>
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                {confidenceQuestions.map((q, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setConfidenceChoice(idx)}
+                    className={`p-3 rounded-xl border text-left transition ${
+                      confidenceChoice === idx 
+                        ? 'bg-[#003366] text-white border-[#003366] font-semibold shadow-xs' 
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    {language === 'hi' ? q.hi : q.en}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Energy Battery Tank Slider */}
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-bold text-[#0a2540] flex items-center gap-1.5">
                   <Battery className={`w-4 h-4 ${getBatteryColor(batteryPercent)}`} />
-                  <span>9. {t("Monthly Operational Readiness & Energy Gauge:", "मासिक परिचालन ऊर्जा बैटरी का स्तर:")}</span>
+                  <span>{t("Monthly Energy Baseline & Recovery Gauge:", "मासिक ऊर्जा एवं विश्राम का स्तर:")}</span>
                 </span>
                 <span className={`font-mono font-extrabold text-sm ${getBatteryColor(batteryPercent)}`}>
-                  {batteryPercent}% {batteryPercent >= 75 ? t("(Optimal)", "(उत्कृष्ट)") : batteryPercent >= 50 ? t("(Moderate)", "(सामान्य)") : t("(Needs Rest)", "(विश्राम ज़रूरी)")}
+                  {batteryPercent}%
                 </span>
               </div>
               <input
@@ -549,11 +772,6 @@ export const SoldierSelfAssessmentModal: React.FC<Props> = ({
                 onChange={(e) => setBatteryPercent(Number(e.target.value))}
                 className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#003366]"
               />
-              <div className="flex justify-between text-[10px] text-slate-400">
-                <span>10% (Exhausted)</span>
-                <span>50% (Steady)</span>
-                <span>100% (Fully Charged)</span>
-              </div>
             </div>
 
             {/* Submit Button */}
@@ -561,7 +779,7 @@ export const SoldierSelfAssessmentModal: React.FC<Props> = ({
               <button
                 onClick={handleSubmit}
                 disabled={submitting}
-                className="w-full py-3.5 bg-[#003366] hover:bg-[#002244] text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 transition"
+                className="w-full py-3.5 bg-[#003366] hover:bg-[#002244] text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 transition cursor-pointer active:scale-[0.99]"
               >
                 {submitting ? (
                   <>
@@ -580,28 +798,28 @@ export const SoldierSelfAssessmentModal: React.FC<Props> = ({
           </div>
         ) : (
 
-          /* RESULT FEEDBACK SCREEN */
+          /* RESULT ACKNOWLEDGMENT SCREEN - ZERO SCORES, NUMBERS, OR RISK TIERS */
           <div className="p-6 space-y-6 text-center animate-fadeIn">
             <div className="w-16 h-16 rounded-full bg-emerald-50 border-2 border-emerald-300 text-emerald-600 flex items-center justify-center mx-auto">
-              <CheckCircle2 className="w-8 h-8" />
+              <Check className="w-8 h-8" />
             </div>
 
             <div className="space-y-1">
               <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                {t("Confidential Self-Check Completed", "गोपनीय स्व-मूल्यांकन संपन्न")}
+                {t("Confidential Check-In Completed", "गोपनीय स्व-मूल्यांकन संपन्न")}
               </span>
-              <h3 className="text-xl font-bold text-[#0a2540]">
-                {t("Assessment Submitted Confidentially", "मूल्यांकन सफलतापूर्वक दर्ज किया गया")}
+              <h3 className="text-lg font-bold text-[#0a2540]">
+                {t("Thank you - your monthly check-in has been recorded.", "धन्यवाद - आपका मासिक कल्याण स्व-मूल्यांकन सफलतापूर्वक दर्ज कर लिया गया है।")}
               </h3>
               <p className="text-xs text-slate-500 max-w-md mx-auto">
                 {t(
-                  "Thank you for your candid self-reflection. Your responses are strictly non-punitive and assist in protecting your duty-rest cycles.",
-                  "आपके ईमानदार स्व-मूल्यांकन हेतु धन्यवाद। आपकी प्रतिक्रियाएं पूर्णतः सुरक्षित हैं तथा ड्यूटी-विश्राम चक्र को बेहतर बनाने में सहायक हैं।"
+                  "Your responses are private and assist in protecting your duty-rest cycles without disciplinary records.",
+                  "आपकी प्रतिक्रियाएं पूर्णतः गोपनीय हैं तथा ड्यूटी-विश्राम चक्र को बेहतर बनाने में सहायक हैं।"
                 )}
               </p>
             </div>
 
-            {/* Feedback items */}
+            {/* Supportive Feedback Tips */}
             <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-left space-y-2 text-xs">
               <h4 className="font-bold text-[#003366] uppercase tracking-wider text-[11px] flex items-center gap-1.5">
                 <Award className="w-4 h-4 text-amber-600" />

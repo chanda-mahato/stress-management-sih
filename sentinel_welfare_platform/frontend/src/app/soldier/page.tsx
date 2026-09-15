@@ -142,13 +142,17 @@ export default function SoldierPortal() {
     setIncomingCall(null);
   };
 
-  // Self-Check Sliders
+  // Self-Check Sliders & Monthly Cadence Status
   const [mood, setMood] = useState(4);
   const [sleep, setSleep] = useState(3);
   const [fatigue, setFatigue] = useState(3);
   const [selfCheckSubmitted, setSelfCheckSubmitted] = useState(false);
   const [assessmentModalOpen, setAssessmentModalOpen] = useState(false);
   const [assessmentResult, setAssessmentResult] = useState<any>(null);
+  const [selfCheckStatus, setSelfCheckStatus] = useState<{ can_submit: boolean; next_available_date: string | null }>({
+    can_submit: true,
+    next_available_date: null
+  });
 
   const handleRequestOtp = async () => {
     setAuthError('');
@@ -225,6 +229,18 @@ export default function SoldierPortal() {
           duration_minutes: 20
         }
       ]));
+
+    // Load 30-day monthly self-check cadence status
+    apiFetch('/soldier/self-check-status?soldier_id=1')
+      .then(res => {
+        if (res) {
+          setSelfCheckStatus({
+            can_submit: res.can_submit ?? true,
+            next_available_date: res.next_available_date || null
+          });
+        }
+      })
+      .catch(() => setSelfCheckStatus({ can_submit: true, next_available_date: null }));
 
     // Load registered family members list
     loadFamilyMembers();
@@ -733,37 +749,52 @@ export default function SoldierPortal() {
               </span>
             </div>
 
-            {assessmentResult ? (
+            {!selfCheckStatus.can_submit ? (
+              <div className="p-4 bg-amber-50/60 rounded-xl border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="font-bold text-amber-950 text-xs flex items-center gap-1.5">
+                    <Clock className="w-4 h-4 text-amber-700" />
+                    <span>{t("Monthly Living & Welfare Conditions Assessment", "मासिक आवास, मेस एवं कल्याणकारी स्व-मूल्यांकन")}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 leading-relaxed max-w-xl">
+                    {t(
+                      `Your next monthly assessment window opens on ${selfCheckStatus.next_available_date || '30 days after last check-in'}. Evaluation is restricted to once per 30 days.`,
+                      `आपका अगला मासिक मूल्यांकन ${selfCheckStatus.next_available_date || '30 दिन बाद'} उपलब्ध होगा। मूल्यांकन प्रत्येक 30 दिन में केवल एक बार ही उपलब्ध होता है।`
+                    )}
+                  </p>
+                </div>
+
+                <button
+                  disabled
+                  className="px-5 py-2.5 bg-slate-200 text-slate-500 font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow-2xs shrink-0 cursor-not-allowed border border-slate-300"
+                >
+                  <Clock className="w-4 h-4 text-slate-400" />
+                  <span>{t(`Next assessment available: ${selfCheckStatus.next_available_date || ''}`, `अगला मूल्यांकन उपलब्ध: ${selfCheckStatus.next_available_date || ''}`)}</span>
+                </button>
+              </div>
+            ) : assessmentResult ? (
               <div className="p-4 bg-emerald-50/70 rounded-xl border border-emerald-300 space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-200/80 pb-2.5">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
                     <div>
                       <span className="font-bold text-emerald-950 text-xs">
-                        {t("Today's Reflection Recorded", "आज का स्व-मूल्यांकन सफलतापूर्वक दर्ज किया गया")}
+                        {t("Thank you - your monthly check-in has been recorded.", "धन्यवाद - आपका मासिक कल्याण स्व-मूल्यांकन सफलतापूर्वक दर्ज कर लिया गया है।")}
                       </span>
                       <p className="text-[11px] text-emerald-800">
-                        {t("Calculated Duty Readiness Index: ", "अनुमानित कर्तव्य तत्परता सूचकांक: ")}
-                        <strong className="text-emerald-900 text-sm">{assessmentResult.readiness_index || 85}%</strong>
+                        {t("Your responses remain strictly confidential and assist in protecting your duty-rest cycles.", "आपकी प्रतिक्रियाएं पूर्णतः गोपनीय हैं तथा ड्यूटी-विश्राम चक्र को बेहतर बनाने में सहायक हैं।")}
                       </p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => setAssessmentModalOpen(true)}
-                    className="px-3 py-1.5 bg-white hover:bg-emerald-100 text-emerald-800 font-bold rounded-lg border border-emerald-400 text-[11px] transition self-start sm:self-auto flex items-center gap-1"
-                  >
-                    <RefreshCw className="w-3 h-3" />
-                    <span>{t("Update Reflection", "पुनः जांच करें")}</span>
-                  </button>
                 </div>
 
-                {assessmentResult.recommendations && assessmentResult.recommendations.length > 0 && (
+                {assessmentResult.feedback && assessmentResult.feedback.length > 0 && (
                   <div className="space-y-1.5 pt-1">
                     <span className="text-[10px] font-bold text-emerald-900 uppercase tracking-wider">
                       {t("Recommended Self-Care for Duty Window:", "कर्तव्य समय हेतु स्व-देखभाल परामर्श:")}
                     </span>
                     <ul className="space-y-1">
-                      {assessmentResult.recommendations.map((rec: string, idx: number) => (
+                      {assessmentResult.feedback.map((rec: string, idx: number) => (
                         <li key={idx} className="text-[11px] text-emerald-900 flex items-start gap-1.5">
                           <span className="text-emerald-600 font-bold">•</span>
                           <span>{rec}</span>
@@ -782,8 +813,8 @@ export default function SoldierPortal() {
                   </div>
                   <p className="text-[11px] text-slate-600 leading-relaxed max-w-xl">
                     {t(
-                      "Review 8 operational living factors: mess food quality, barrack housing, duty shift rotation, family connection, leave clearance, kit readiness, and medical access. Identifies stress drivers without any blunt questions or career penalty.",
-                      "महीने में एक बार मेस भोजन, बैरक स्वच्छता, ड्यूटी रोटेशन, पारिवारिक संपर्क, छुट्टी संचय एवं चिकित्सा सुविधा पर विचार करें। यह बिना किसी झिझक के आपके कल्याण में सुधार लाता है।"
+                      "Review 12 operational living factors: mess food quality, barrack housing, duty shift rotation, family connection, leave clearance, kit readiness, medical access, shift recovery, physical stamina, peer connection, and duty confidence. Identifies stress drivers without any blunt questions or career penalty.",
+                      "महीने में एक बार मेस भोजन, बैरक स्वच्छता, ड्यूटी रोटेशन, पारिवारिक संपर्क, छुट्टी संचय, गियर स्थिति एवं स्वास्थ्य पर विचार करें। यह बिना किसी झिझक के आपके कल्याण में सुधार लाता है।"
                     )}
                   </p>
                 </div>
@@ -831,11 +862,11 @@ export default function SoldierPortal() {
                 <div className="p-3 bg-amber-50/80 rounded-xl border border-amber-300 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
                   <div>
                     <div className="font-bold text-amber-950 flex items-center gap-2">
-                      <AlertTriangle className="w-4 h-4 text-amber-700" />
-                      <span>{t("Active Welfare Review Case #", "सक्रिय कल्याण समीक्षा केस #")}{flaggedCase.id} ({flaggedCase.status})</span>
+                      <Heart className="w-4 h-4 text-amber-700" />
+                      <span>{t("Your Medical Officer has a message for you", "आपके यूनिट चिकित्सा अधिकारी (MO) का आपके लिए एक स्वास्थ्य परामर्श संदेश है")}</span>
                     </div>
                     <p className="text-slate-600 text-[11px] mt-0.5">
-                      {t("Prescribed Plan: ", "निर्धारित योजना: ")}<strong>{flaggedCase.action_plan}</strong>
+                      {t("Prescribed Note: ", "चिकित्सा परामर्श: ")}<strong>{flaggedCase.action_plan}</strong>
                     </p>
                   </div>
                   <span className="text-[10px] font-mono px-2 py-1 rounded bg-white text-slate-600 border border-amber-200 self-start sm:self-auto">
@@ -972,7 +1003,20 @@ export default function SoldierPortal() {
         </div>
       )}
 
-      {/* 1:1 Video Call Modal with Phone Numbers for Testing */}
+      {/* Monthly Self-Assessment Modal */}
+      <SoldierSelfAssessmentModal
+        isOpen={assessmentModalOpen}
+        onClose={() => setAssessmentModalOpen(false)}
+        soldierId={1}
+        canSubmit={selfCheckStatus.can_submit}
+        nextAvailableDate={selfCheckStatus.next_available_date}
+        onAssessmentCompleted={(res) => {
+          setAssessmentResult(res);
+          loadSoldierData();
+        }}
+      />
+
+      {/* 1:1 Video Call Modal */}
       <P2PCallModal
         isOpen={callModalOpen}
         onClose={() => setCallModalOpen(false)}

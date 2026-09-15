@@ -31,6 +31,62 @@ export default function FamilyPortal() {
   const [callSlots, setCallSlots] = useState<any[]>([]);
   const [callModalOpen, setCallModalOpen] = useState(false);
   const [isRefreshingFeed, setIsRefreshingFeed] = useState(false);
+  const [isCallWindowOpen, setIsCallWindowOpen] = useState(false);
+  const [nextCallOpenTime, setNextCallOpenTime] = useState<string>('19:00 hrs');
+
+  const checkCallWindow = () => {
+    const now = new Date();
+    const curMin = now.getHours() * 60 + now.getMinutes();
+
+    let active = false;
+    let nextTime = '19:00 hrs';
+
+    if (callSlots && callSlots.length > 0) {
+      for (const slot of callSlots) {
+        if (slot.scheduled_at) {
+          const start = new Date(slot.scheduled_at);
+          const end = new Date(start.getTime() + (slot.duration_minutes || 20) * 60000);
+          if (now >= start && now <= end) {
+            active = true;
+            break;
+          } else if (now < start) {
+            const h = start.getHours().toString().padStart(2, '0');
+            const m = start.getMinutes().toString().padStart(2, '0');
+            nextTime = `${h}:${m} hrs`;
+          }
+        }
+        if (slot.slot_window_desc) {
+          const match = slot.slot_window_desc.match(/(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/);
+          if (match) {
+            const sMin = parseInt(match[1]) * 60 + parseInt(match[2]);
+            const eMin = parseInt(match[3]) * 60 + parseInt(match[4]);
+            if (curMin >= sMin && curMin <= eMin) {
+              active = true;
+              break;
+            } else if (curMin < sMin) {
+              nextTime = `${match[1].padStart(2, '0')}:${match[2]} hrs`;
+            }
+          }
+        }
+      }
+    } else {
+      if (curMin >= 1140 && curMin <= 1160) {
+        active = true;
+      } else {
+        nextTime = '19:00 hrs';
+      }
+    }
+
+    setIsCallWindowOpen(active);
+    setNextCallOpenTime(nextTime);
+  };
+
+  useEffect(() => {
+    checkCallWindow();
+    const interval = setInterval(checkCallWindow, 15000);
+    return () => clearInterval(interval);
+  }, [callSlots]);
+
 
   // Real-time polling for soldier 'I am Okay' check-ins (every 3 seconds)
   useEffect(() => {
@@ -429,13 +485,6 @@ export default function FamilyPortal() {
 
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <button
-                  onClick={() => setCallModalOpen(true)}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition"
-                >
-                  <Video className="w-4 h-4" />
-                  <span>{t("Call Actual Phone Test", "फ़ोन पर वीडियो कॉल टेस्ट")}</span>
-                </button>
-                <button
                   onClick={() => setEmergencyOpen(true)}
                   className="px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs rounded-xl transition flex items-center gap-1.5"
                 >
@@ -472,8 +521,8 @@ export default function FamilyPortal() {
                         </p>
                       </div>
                     </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                      {t("Ready to Connect", "संपर्क हेतु तैयार")}
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isCallWindowOpen ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                      {isCallWindowOpen ? t("Ready to Connect", "संपर्क हेतु तैयार") : t("Window Closed", "समय सीमा बंद")}
                     </span>
                   </div>
 
@@ -495,13 +544,29 @@ export default function FamilyPortal() {
                   </div>
                 </div>
 
-                <button
-                  onClick={() => setCallModalOpen(true)}
-                  className="mt-4 w-full py-3 bg-sky-700 hover:bg-sky-800 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition shadow-xs"
-                >
-                  <Video className="w-4 h-4" />
-                  <span>{t("Connect 1:1 Video Call", "वीडियो कॉल से जुड़ें / Connect Video Call")}</span>
-                </button>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => isCallWindowOpen && setCallModalOpen(true)}
+                    disabled={!isCallWindowOpen}
+                    className={`mt-4 w-full py-3 font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition shadow-xs ${
+                      isCallWindowOpen
+                        ? 'bg-sky-700 hover:bg-sky-800 text-white cursor-pointer active:scale-[0.99]'
+                        : 'bg-slate-200 text-slate-500 border border-slate-300 cursor-not-allowed'
+                    }`}
+                  >
+                    <Video className={`w-4 h-4 ${isCallWindowOpen ? 'text-white' : 'text-slate-400'}`} />
+                    <span>
+                      {isCallWindowOpen 
+                        ? t("Connect 1:1 Video Call", "वीडियो कॉल कनेक्ट करें / Connect Video Call")
+                        : t(`Next scheduled call opens at ${nextCallOpenTime}`, `आपकी निर्धारित वीडियो कॉल का समय: ${nextCallOpenTime}`)}
+                    </span>
+                  </button>
+                  {!isCallWindowOpen && (
+                    <p className="text-[11px] text-amber-900 bg-amber-50 p-2 rounded-lg border border-amber-200 text-center font-medium">
+                      🔒 {t(`Your next scheduled call opens at ${nextCallOpenTime}. Call button enables automatically during rest window.`, `आपकी निर्धारित वीडियो कॉल का समय: ${nextCallOpenTime}। विश्राम समय शुरू होते ही बटन स्वतः सक्रिय हो जाएगा।`)}
+                    </p>
+                  )}
+                </div>
               </div>
 
               {/* Card 2: "I am Okay" Live Reassurance Feed */}

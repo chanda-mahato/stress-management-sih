@@ -64,11 +64,72 @@ def send_im_okay_checkin(req: Optional[CheckinPayload] = None, soldier_id: int =
         "message": checkin.message
     }
 
+@router.get("/self-check-status")
+@router.get("/self-check/status")
+def get_self_check_status(
+    soldier_id: int = 1,
+    db: Session = Depends(get_db),
+    user: Optional[dict] = Depends(enforce_soldier_scope)
+):
+    """Checks whether the soldier is currently eligible to submit a monthly self-assessment."""
+    auth_soldier_id = user.get("soldier_id") if user else soldier_id
+    last_check = db.query(SoldierSelfCheck).filter_by(personnel_id=auth_soldier_id).order_by(SoldierSelfCheck.created_at.desc()).first()
+    
+    if not last_check or not last_check.created_at:
+        return {
+            "can_submit": True,
+            "last_submitted_at": None,
+            "next_available_date": None,
+            "days_remaining": 0
+        }
+        
+    now = datetime.datetime.utcnow()
+    created = last_check.created_at.replace(tzinfo=None) if hasattr(last_check.created_at, "replace") else now
+    diff_days = (now - created).days
+    
+    if diff_days < 30:
+        next_date_dt = created + datetime.timedelta(days=30)
+        next_date_str = next_date_dt.strftime("%d %B %Y")
+        return {
+            "can_submit": False,
+            "last_submitted_at": created.strftime("%d %B %Y"),
+            "next_available_date": next_date_str,
+            "days_remaining": 30 - diff_days
+        }
+        
+    return {
+        "can_submit": True,
+        "last_submitted_at": created.strftime("%d %B %Y"),
+        "next_available_date": None,
+        "days_remaining": 0
+    }
+
 @router.post("/self-check")
-def submit_self_check(req: SelfCheckCreate, soldier_id: int = 1, db: Session = Depends(get_db)):
+def submit_self_check(
+    req: SelfCheckCreate,
+    soldier_id: int = 1,
+    db: Session = Depends(get_db),
+    user: Optional[dict] = Depends(enforce_soldier_scope)
+):
+    auth_soldier_id = user.get("soldier_id") if user else soldier_id
+    
+    # 1. Enforce actual 30-day monthly cadence (Reject if < 30 days since last submission)
+    last_check = db.query(SoldierSelfCheck).filter_by(personnel_id=auth_soldier_id).order_by(SoldierSelfCheck.created_at.desc()).first()
+    if last_check and last_check.created_at:
+        now = datetime.datetime.utcnow()
+        created = last_check.created_at.replace(tzinfo=None) if hasattr(last_check.created_at, "replace") else now
+        diff_days = (now - created).days
+        if diff_days < 30:
+            next_date_dt = created + datetime.timedelta(days=30)
+            next_date_str = next_date_dt.strftime("%d %B %Y")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Your next assessment window opens on {next_date_str}."
+            )
+
     answers_str = json.dumps(req.raw_answers or {})
     self_check = SoldierSelfCheck(
-        personnel_id=soldier_id,
+        personnel_id=auth_soldier_id,
         mood_score=req.mood_score,
         sleep_score=req.sleep_score,
         fatigue_score=req.fatigue_score,
@@ -79,7 +140,6 @@ def submit_self_check(req: SelfCheckCreate, soldier_id: int = 1, db: Session = D
     db.refresh(self_check)
     
     battery = req.battery_percentage if req.battery_percentage is not None else 75
-    readiness_index = max(10, min(100, int((req.mood_score * 7) + (req.sleep_score * 7) + ((6 - req.fatigue_score) * 6))))
     
     feedback = []
     if req.sleep_score <= 2:
@@ -94,10 +154,9 @@ def submit_self_check(req: SelfCheckCreate, soldier_id: int = 1, db: Session = D
     return {
         "status": "success", 
         "self_check_id": self_check.id,
-        "readiness_index": readiness_index,
         "battery_percentage": battery,
         "feedback": feedback,
-        "message": "Self-assessment recorded confidentially. Zero punitive tracking."
+        "message": "Thank you - your monthly check-in has been recorded."
     }
 
 @router.get("/call-slots")
