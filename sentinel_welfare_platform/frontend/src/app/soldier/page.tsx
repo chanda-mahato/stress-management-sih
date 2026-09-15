@@ -778,22 +778,22 @@ export default function SoldierPortal() {
                 <div className="space-y-1">
                   <div className="font-bold text-[#003366] text-xs flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5 text-sky-600" />
-                    <span>{t("Take 2 Minutes for Your Daily Grounding & Self-Check", "2 मिनट का दैनिक सजगता एवं स्वास्थ्य स्व-मूल्यांकन")}</span>
+                    <span>{t("Take 2 Minutes for Your Monthly Living & Welfare Conditions Assessment", "2 मिनट का मासिक कल्याण, मेस एवं बैरक स्व-मूल्यांकन")}</span>
                   </div>
                   <p className="text-[11px] text-slate-600 leading-relaxed max-w-xl">
                     {t(
-                      "Review restorative sleep, patrol focus, muscle stiffness, and mess appetite. Helps you monitor your own health and access timely unit MO rest windows without any service stigma.",
-                      "नींद, गश्त सजगता, शारीरिक खिंचाव एवं भोजन पर विचार करें। यह बिना किसी सेवा संबंधी झिझक के आपको बेहतर आराम और स्वास्थ्य बनाए रखने में मदद करता है।"
+                      "Review 8 operational living factors: mess food quality, barrack housing, duty shift rotation, family connection, leave clearance, kit readiness, and medical access. Identifies stress drivers without any blunt questions or career penalty.",
+                      "महीने में एक बार मेस भोजन, बैरक स्वच्छता, ड्यूटी रोटेशन, पारिवारिक संपर्क, छुट्टी संचय एवं चिकित्सा सुविधा पर विचार करें। यह बिना किसी झिझक के आपके कल्याण में सुधार लाता है।"
                     )}
                   </p>
                 </div>
 
                 <button
                   onClick={() => setAssessmentModalOpen(true)}
-                  className="px-5 py-2.5 bg-[#003366] hover:bg-[#002244] text-white font-bold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-sm shrink-0"
+                  className="px-5 py-2.5 bg-[#003366] hover:bg-[#002244] text-white font-bold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-sm shrink-0 cursor-pointer active:scale-[0.98]"
                 >
                   <Heart className="w-4 h-4 text-rose-300" />
-                  <span>{t("Start Daily Check", "स्व-मूल्यांकन शुरू करें")}</span>
+                  <span>{t("Start Monthly Assessment", "मासिक स्व-मूल्यांकन शुरू करें")}</span>
                 </button>
               </div>
             )}

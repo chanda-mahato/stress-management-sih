@@ -29,6 +29,9 @@ export const SoldierSelfAssessmentModal: React.FC<Props> = ({
   const [shiftChoice, setShiftChoice] = useState<number>(0);
   const [networkChoice, setNetworkChoice] = useState<number>(0);
   const [unitChoice, setUnitChoice] = useState<number>(0);
+  const [leaveChoice, setLeaveChoice] = useState<number>(0);
+  const [equipmentChoice, setEquipmentChoice] = useState<number>(0);
+  const [healthChoice, setHealthChoice] = useState<number>(0);
   const [batteryPercent, setBatteryPercent] = useState<number>(85);
 
   const [submitting, setSubmitting] = useState(false);
@@ -151,6 +154,75 @@ export const SoldierSelfAssessmentModal: React.FC<Props> = ({
     }
   ];
 
+  const leaveQuestions = [
+    {
+      score: 5,
+      en: "Timely Leave Sanction: Rest leave applications approved smoothly; backlog cleared regularly.",
+      hi: "समय पर अवकाश स्वीकृति: छुट्टियां आसानी से स्वीकृत, बकाया अवकाश नियमित रूप से उपलब्ध।"
+    },
+    {
+      score: 4,
+      en: "Standard Leave Rotation: Normal leave queue, approved with advance operational notice.",
+      hi: "सामान्य अवकाश रोस्टर: योजनाबद्ध तरीके से छुट्टियों की मंजूरी।"
+    },
+    {
+      score: 2,
+      en: "Delayed Leave Approval: Leave delayed due to unit manning shortfall or operational needs.",
+      hi: "अवकाश में देरी: यूनिट में जवानों की कमी के कारण छुट्टियों में विलंब।"
+    },
+    {
+      score: 1,
+      en: "Heavy Leave Backlog: >30 days accumulated backlog, urgent leave pending without replacement.",
+      hi: "अत्यधिक अवकाश बकाया: 30+ दिनों की छुट्टियां बकाया, अति आवश्यक छुट्टी मिलने में परेशानी।"
+    }
+  ];
+
+  const equipmentQuestions = [
+    {
+      score: 5,
+      en: "Top Kit Readiness: Protective armor, weapons, uniforms, and tactical boots in prime condition.",
+      hi: "उत्कृष्ट गियर एवं उपकरण: बुलेटप्रूफ जैकेट, शस्त्र, वर्दी एवं जूते उत्तम स्थिति में।"
+    },
+    {
+      score: 4,
+      en: "Adequate Supply: Operational kit in standard working order, routine replacement available.",
+      hi: "सामान्य उपकरण व्यवस्था: ड्यूटी किट चालू हालत में, नियमित सामान उपलब्धता।"
+    },
+    {
+      score: 2,
+      en: "Equipment Wear & Tear: Delayed replacement of worn boots, damaged rain/winter gear.",
+      hi: "सामान में घिसावट: फटे जूते या खराब मौसम गियर का देर से बदलना।"
+    },
+    {
+      score: 1,
+      en: "Kit Deficit: Inadequate protective equipment or severe delay in operational supplies.",
+      hi: "उपकरणों की कमी: सुरक्षा गियर की भारी कमी या जरूरी सामान का न मिल पाना।"
+    }
+  ];
+
+  const healthQuestions = [
+    {
+      score: 5,
+      en: "Optimal Fitness Baseline: High physical stamina, zero chronic pain, instant MO access.",
+      hi: "उत्कृष्ट शारीरिक स्वास्थ्य: बेहतरीन स्टैमिना, कोई दर्द नहीं, डॉक्टर की तुरंत सलाह उपलब्ध।"
+    },
+    {
+      score: 4,
+      en: "Routine Physical Recovery: Normal fatigue post-patrol, manageable muscle stiffness.",
+      hi: "सामान्य शारीरिक थकान: गश्त के बाद सामान्य थकान, नियमित विश्राम से रिकवरी।"
+    },
+    {
+      score: 2,
+      en: "Persistent Body Fatigue: Joint aches, chronic sleep deficit, or delayed medical checkup.",
+      hi: "लगातार शारीरिक दर्द: जोड़ों में दर्द, नींद की कमी या चिकित्सा जांच में देरी।"
+    },
+    {
+      score: 1,
+      en: "Heavy Health Strain: Severe fatigue, unaddressed injury/pain, urgent need for MO rest rotation.",
+      hi: "अत्यधिक शारीरिक तनाव: गंभीर थकान, चोट का इलाज न हो पाना या तुरंत विश्राम की आवश्यकता।"
+    }
+  ];
+
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
@@ -159,11 +231,14 @@ export const SoldierSelfAssessmentModal: React.FC<Props> = ({
       const q3Score = shiftQuestions[shiftChoice].score;
       const q4Score = networkQuestions[networkChoice].score;
       const q5Score = unitQuestions[unitChoice].score;
+      const q6Score = leaveQuestions[leaveChoice].score;
+      const q7Score = equipmentQuestions[equipmentChoice].score;
+      const q8Score = healthQuestions[healthChoice].score;
 
       // Map to 1-5 scale
-      const moodRating = Math.round((q4Score + q5Score) / 2);
-      const sleepRating = Math.round((q1Score + q2Score) / 2);
-      const fatigueRating = Math.max(1, 6 - q3Score);
+      const moodRating = Math.round((q4Score + q5Score + q6Score) / 3);
+      const sleepRating = Math.round((q1Score + q2Score + q8Score) / 3);
+      const fatigueRating = Math.max(1, 6 - Math.round((q3Score + q7Score) / 2));
 
       const payload = {
         mood_score: moodRating,
@@ -176,6 +251,9 @@ export const SoldierSelfAssessmentModal: React.FC<Props> = ({
           duty_shift_rotation: shiftQuestions[shiftChoice].en,
           family_telecom: networkQuestions[networkChoice].en,
           unit_camaraderie: unitQuestions[unitChoice].en,
+          welfare_leave_backlog: leaveQuestions[leaveChoice].en,
+          equipment_readiness: equipmentQuestions[equipmentChoice].en,
+          health_mo_access: healthQuestions[healthChoice].en,
           battery_gauge: batteryPercent
         }
       };
@@ -223,7 +301,7 @@ export const SoldierSelfAssessmentModal: React.FC<Props> = ({
                 {t("Monthly Living & Welfare Conditions Assessment", "मासिक कल्याण, मेस एवं बैरक स्व-मूल्यांकन")}
               </h2>
               <p className="text-[11px] text-slate-300">
-                {t("100% Confidential Monthly Evaluation • Identifies Mess, Barracks & Operational Factors Without Blunt Stress Questions", "पूर्णतः गोपनीय मासिक मूल्यांकन • बिना किसी असहज सवाल के मेस, बैरक एवं ड्यूटी के कारणों का मूल्यांकन")}
+                {t("100% Confidential Monthly Evaluation • Assesses Mess, Barracks, Shift Roster, Leave Clearance & Unit Support Without Blunt Stress Questions", "पूर्णतः गोपनीय मासिक मूल्यांकन • बिना किसी असहज सवाल के मेस, बैरक, छुट्टी एवं ड्यूटी के 8 व्यावहारिक कारणों का मूल्यांकन")}
               </p>
             </div>
           </div>
@@ -245,8 +323,8 @@ export const SoldierSelfAssessmentModal: React.FC<Props> = ({
               <div>
                 <strong>{t("Monthly Welfare Reflection: ", "मासिक आवास एवं कल्याण मूल्यांकन: ")}</strong>
                 {t(
-                  'We do not ask blunt questions like "Are you stressed?". Instead, evaluate these 5 operational living conditions once a month (mess food quality, barrack sanitation, duty shift rotation, family contact, and unit support) to identify stress-causing factors and improve welfare support.',
-                  'हम "क्या आप तनाव में हैं?" जैसे असहज सवाल नहीं पूछते। महीने में एक बार नीचे दिए गए 5 व्यावहारिक कारणों (मेस भोजन, बैरक स्वच्छता, ड्यूटी रोटेशन, पारिवारिक संपर्क एवं यूनिट सहयोग) का मूल्यांकन करें। यह बिना किसी दंडात्मक कार्यवाही के तनाव के कारणों को दूर करने में सहायक है।'
+                  'We do not ask blunt questions like "Are you stressed?". Instead, evaluate these 8 operational living conditions once a month (mess food quality, barrack sanitation, duty shift rotation, family contact, unit support, leave backlog, kit equipment, and health facilities) to identify stress-causing factors and improve welfare support.',
+                  'हम "क्या आप तनाव में हैं?" जैसे असहज सवाल नहीं पूछते। महीने में एक बार नीचे दिए गए 8 व्यावहारिक कारणों (मेस भोजन, बैरक स्वच्छता, ड्यूटी रोस्टर, परिवार संपर्क, यूनिट सहयोग, छुट्टी संचय, उपकरण स्थिति एवं स्वास्थ्य सुविधा) का मूल्यांकन करें।'
                 )}
               </div>
             </div>
@@ -255,7 +333,7 @@ export const SoldierSelfAssessmentModal: React.FC<Props> = ({
             <div className="space-y-2.5">
               <div className="flex items-center gap-2 font-bold text-xs text-[#0a2540]">
                 <Utensils className="w-4 h-4 text-amber-600" />
-                <span>1. {t("Mess Food Quality & Hygiene (Monthly)", "मेस भोजन, स्वच्छता एवं पेयजल सुविधा (मासिक):")}</span>
+                <span>1. {t("Mess Food Quality, Meals & Drinking Water (Monthly)", "मेस भोजन, गुणवत्ता एवं पेयजल सुविधा (मासिक):")}</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                 {messQuestions.map((q, idx) => (
@@ -280,7 +358,7 @@ export const SoldierSelfAssessmentModal: React.FC<Props> = ({
             <div className="space-y-2.5">
               <div className="flex items-center gap-2 font-bold text-xs text-[#0a2540]">
                 <Home className="w-4 h-4 text-indigo-600" />
-                <span>2. {t("Barrack Living Conditions & Sanitation", "आवास बैरक, स्वच्छता एवं मौसम सुरक्षा:")}</span>
+                <span>2. {t("Barrack Housing, Sanitation & Weather Protection", "आवास बैरक, स्वच्छता एवं मौसम सुरक्षा:")}</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                 {barrackQuestions.map((q, idx) => (
@@ -305,7 +383,7 @@ export const SoldierSelfAssessmentModal: React.FC<Props> = ({
             <div className="space-y-2.5">
               <div className="flex items-center gap-2 font-bold text-xs text-[#0a2540]">
                 <Clock className="w-4 h-4 text-sky-600" />
-                <span>3. {t("Duty Shift Rotation & Workload Balance", "ड्यूटी रोटेशन एवं कार्यभार संतुलन:")}</span>
+                <span>3. {t("Duty Shift Roster & Rest Recovery Gap", "ड्यूटी रोस्टर एवं विश्राम अंतर (मासिक):")}</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                 {shiftQuestions.map((q, idx) => (
@@ -330,7 +408,7 @@ export const SoldierSelfAssessmentModal: React.FC<Props> = ({
             <div className="space-y-2.5">
               <div className="flex items-center gap-2 font-bold text-xs text-[#0a2540]">
                 <PhoneCall className="w-4 h-4 text-red-600" />
-                <span>4. {t("Family Connectivity & Network Availability", "पारिवारिक संपर्क एवं मोबाइल नेटवर्क स्थिति:")}</span>
+                <span>4. {t("Family Telecom Connectivity & Domestic Communication", "पारिवारिक संपर्क एवं मोबाइल नेटवर्क स्थिति:")}</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                 {networkQuestions.map((q, idx) => (
@@ -355,7 +433,7 @@ export const SoldierSelfAssessmentModal: React.FC<Props> = ({
             <div className="space-y-2.5">
               <div className="flex items-center gap-2 font-bold text-xs text-[#0a2540]">
                 <Users className="w-4 h-4 text-emerald-600" />
-                <span>5. {t("Unit Peer Support & Camaraderie", "साथी जवानों का परस्पर सहयोग एवं सुनवाई:")}</span>
+                <span>5. {t("Unit Peer Support & Command Listening", "साथी जवानों का परस्पर सहयोग एवं अधिकारी सुनवाई:")}</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                 {unitQuestions.map((q, idx) => (
@@ -376,12 +454,87 @@ export const SoldierSelfAssessmentModal: React.FC<Props> = ({
               </div>
             </div>
 
-            {/* Q6: Monthly Energy Battery Tank Slider */}
+            {/* Q6: Rest Leave Sanction & Backlog Clearance */}
+            <div className="space-y-2.5">
+              <div className="flex items-center gap-2 font-bold text-xs text-[#0a2540]">
+                <Award className="w-4 h-4 text-purple-600" />
+                <span>6. {t("Rest Leave Sanction & Backlog Clearance Opportunity", "अवकाश स्वीकृति एवं बकाया छुट्टी निस्तारण स्थिति:")}</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                {leaveQuestions.map((q, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setLeaveChoice(idx)}
+                    className={`p-3 rounded-xl border text-left transition flex items-start gap-2 ${
+                      leaveChoice === idx 
+                        ? 'bg-purple-50 border-purple-700 text-purple-950 font-bold shadow-xs' 
+                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className={`w-3.5 h-3.5 rounded-full border shrink-0 mt-0.5 ${leaveChoice === idx ? 'border-purple-700 bg-purple-700' : 'border-slate-400'}`} />
+                    <span className="leading-snug">{language === 'hi' ? q.hi : q.en}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Q7: Equipment, Body Armor & Kit Readiness */}
+            <div className="space-y-2.5">
+              <div className="flex items-center gap-2 font-bold text-xs text-[#0a2540]">
+                <Shield className="w-4 h-4 text-cyan-600" />
+                <span>7. {t("Equipment, Body Armor & Kit Supply Readiness", "सुरक्षा उपकरण, बुलेटप्रूफ जैकेट एवं वर्दी आपूर्ति स्थिति:")}</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                {equipmentQuestions.map((q, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setEquipmentChoice(idx)}
+                    className={`p-3 rounded-xl border text-left transition flex items-start gap-2 ${
+                      equipmentChoice === idx 
+                        ? 'bg-cyan-50 border-cyan-700 text-cyan-950 font-bold shadow-xs' 
+                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className={`w-3.5 h-3.5 rounded-full border shrink-0 mt-0.5 ${equipmentChoice === idx ? 'border-cyan-700 bg-cyan-700' : 'border-slate-400'}`} />
+                    <span className="leading-snug">{language === 'hi' ? q.hi : q.en}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Q8: Physical Recovery Baseline & Medical Access */}
+            <div className="space-y-2.5">
+              <div className="flex items-center gap-2 font-bold text-xs text-[#0a2540]">
+                <Activity className="w-4 h-4 text-teal-600" />
+                <span>8. {t("Physical Recovery Baseline & Medical Officer Access", "शारीरिक स्वास्थ्य रिकवरी एवं डॉक्टर सलाह उपलब्धता:")}</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                {healthQuestions.map((q, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setHealthChoice(idx)}
+                    className={`p-3 rounded-xl border text-left transition flex items-start gap-2 ${
+                      healthChoice === idx 
+                        ? 'bg-teal-50 border-teal-700 text-teal-950 font-bold shadow-xs' 
+                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className={`w-3.5 h-3.5 rounded-full border shrink-0 mt-0.5 ${healthChoice === idx ? 'border-teal-700 bg-teal-700' : 'border-slate-400'}`} />
+                    <span className="leading-snug">{language === 'hi' ? q.hi : q.en}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Q9: Monthly Energy Battery Tank Slider */}
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-bold text-[#0a2540] flex items-center gap-1.5">
                   <Battery className={`w-4 h-4 ${getBatteryColor(batteryPercent)}`} />
-                  <span>6. {t("Monthly Operational Readiness & Energy Gauge:", "मासिक परिचालन ऊर्जा बैटरी का स्तर:")}</span>
+                  <span>9. {t("Monthly Operational Readiness & Energy Gauge:", "मासिक परिचालन ऊर्जा बैटरी का स्तर:")}</span>
                 </span>
                 <span className={`font-mono font-extrabold text-sm ${getBatteryColor(batteryPercent)}`}>
                   {batteryPercent}% {batteryPercent >= 75 ? t("(Optimal)", "(उत्कृष्ट)") : batteryPercent >= 50 ? t("(Moderate)", "(सामान्य)") : t("(Needs Rest)", "(विश्राम ज़रूरी)")}
