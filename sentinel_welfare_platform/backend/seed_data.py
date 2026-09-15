@@ -17,12 +17,40 @@ def seed_database():
         db.close()
         return
 
-    csv_path = r"C:\Users\Rashm\.gemini\antigravity\scratch\sih_ps186_data_pipeline\data\processed\final_training_dataset.csv"
+    backend_dir = os.path.dirname(os.path.abspath(__file__))
+    csv_path = os.path.join(backend_dir, "final_training_dataset.csv")
     if not os.path.exists(csv_path):
-        csv_path = r"C:\Users\Rashm\.gemini\antigravity\scratch\sih_ps186_data_pipeline\final_training_dataset.csv"
+        csv_path = os.path.join(os.path.dirname(backend_dir), "data", "processed", "final_training_dataset.csv")
         
-    df = pd.read_csv(csv_path).head(50)  # Seed 50 realistic sample soldiers
-    print(f"[Seed] Seeding from dataset: {len(df)} soldiers...")
+    if os.path.exists(csv_path):
+        df = pd.read_csv(csv_path).head(50)
+        print(f"[Seed] Seeding from dataset CSV ({csv_path}): {len(df)} soldiers...")
+    else:
+        print("[Seed] CSV not found, generating programmatic sample soldiers...")
+        df = pd.DataFrame([{
+            "rank_encoded": i % 5, "age": 25 + (i * 2) % 20, "service_tenure_years": 3 + i % 15,
+            "distance_from_home_station_km": 400 + (i * 100) % 1500, "num_dependents": 2 + i % 3,
+            "annual_fitness_grade_encoded": i % 2, "fitness_trend_score": 0.5 + (i % 5) * 0.1,
+            "deployment_duration_days": 60 + (i * 30) % 300, "posting_transfer_count_last_2yrs": i % 3,
+            "commute_transit_days": 2 + i % 4, "unit_manning_shortfall_pct": 10 + (i * 5) % 30,
+            "promotion_stagnation_years": i % 5, "duty_hours_daily": 8 + (i * 2) % 8,
+            "rest_hours_daily": 5 + i % 4, "overtime_hours_monthly": 10 + (i * 10) % 40,
+            "night_shift_frequency_monthly": 4 + (i * 2) % 10, "consecutive_night_duty_days": 1 + i % 4,
+            "overtime_flag": i % 2, "daily_workload_score": 30 + (i * 10) % 60,
+            "training_hours_last_year": 20 + i % 40, "leave_backlog_days": 10 + (i * 5) % 45,
+            "days_since_last_leave": 30 + (i * 20) % 180, "leave_days_last_90d": 3 + i % 10,
+            "absenteeism_hours_last_year": i * 2, "family_separation_months": 2 + i % 10,
+            "conduct_flag": 0, "body_mass_index": 21.5 + (i % 6) * 1.2,
+            "stagnation_per_tenure_ratio": 0.1, "transit_separation_burden": 3,
+            "manning_training_ratio": 0.3, "transfer_tenure_friction": 0.1,
+            "manning_absenteeism_load": 1, "training_vs_unit_median": 0,
+            "absenteeism_vs_rank_median": 0, "theatre_Border Outpost (LoC/IB)": 1 if i % 4 == 0 else 0,
+            "theatre_J&K (CI/Ops)": 1 if i % 4 == 1 else 0, "theatre_LWE / Bastar (Anti-Naxal)": 1 if i % 4 == 2 else 0,
+            "theatre_Peace / Training Center": 1 if i % 4 == 3 else 0,
+            "unit_CoBRA Strike Unit": 1 if i % 4 == 0 else 0, "unit_General Duty (GD)": 1 if i % 4 == 1 else 0,
+            "unit_Rapid Action Force (RAF)": 1 if i % 4 == 2 else 0, "unit_VIP Security Wing": 1 if i % 4 == 3 else 0
+        } for i in range(50)])
+
     
     ranks = ["Constable", "Head Constable", "ASI", "Sub-Inspector", "Inspector"]
     units = ["CoBRA Strike Unit", "General Duty (GD)", "Rapid Action Force (RAF)", "VIP Security Wing"]

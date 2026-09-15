@@ -11,9 +11,16 @@ from app.routers import ml, personnel, cases, soldier, family, chatbot, signalin
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     print("[Lifespan] Database initialized.")
+    try:
+        from seed_data import seed_database
+        seed_database()
+        print("[Lifespan] Database auto-seeding checked.")
+    except Exception as exc:
+        print(f"[Lifespan] Seeding warning: {exc}")
     print(f"[Lifespan] ML Engine ready with {len(ml_engine.feature_names)} features.")
     yield
     print("[Lifespan] Server shutdown cleanly.")
+
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
