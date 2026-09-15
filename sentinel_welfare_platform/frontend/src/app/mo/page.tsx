@@ -545,19 +545,76 @@ export default function MedicalOfficerDashboard() {
                     )}
                   </div>
 
-                  {/* Operational Telemetry Metrics */}
-                  <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 grid grid-cols-3 gap-2 text-center text-xs">
-                    <div>
-                      <span className="block text-slate-400 text-[10px] uppercase font-bold">Daily Duty Shift</span>
-                      <strong className="text-slate-800">{linkedPersonnel?.duty_hours_daily || 9.5}h / day</strong>
+                  {/* Comprehensive Dataset Telemetry & Operational Profile Card */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-200 pb-2.5">
+                      <h4 className="text-xs font-extrabold text-[#003366] uppercase tracking-wider flex items-center gap-1.5">
+                        <Activity className="w-4 h-4 text-indigo-600" />
+                        <span>{t("Raw Dataset Telemetry & Operational Profile", "रॉ डेटासेट टेलीमेट्री एवं संचालन प्रोफ़ाइल")}</span>
+                      </h4>
+                      <span className="text-[10px] font-mono text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded font-bold">
+                        {t("SIH PS186 Telemetry Standard", "एसआईएच पीएस186 टेलीमेट्री मानक")}
+                      </span>
                     </div>
-                    <div>
-                      <span className="block text-slate-400 text-[10px] uppercase font-bold">Rest Allocation</span>
-                      <strong className="text-slate-800">{linkedPersonnel?.rest_hours_daily || 6.5}h / day</strong>
+
+                    {/* Grid 1: Service & Deployment Profile */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                      <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                        <span className="block text-[10px] font-bold text-slate-400 uppercase">{t("OPSEC Hashed ID", "सुरक्षित हैश आईडी")}</span>
+                        <span className="font-mono text-xs font-bold text-slate-800">{linkedPersonnel?.service_id_hash || selectedCase?.service_id_hash || 'CRPF_1001...'}</span>
+                      </div>
+                      <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                        <span className="block text-[10px] font-bold text-slate-400 uppercase">{t("Age & Tenure", "आयु एवं सेवा अवधि")}</span>
+                        <span className="font-semibold text-slate-800">{linkedPersonnel?.age || 34} Yrs • {linkedPersonnel?.service_tenure_years || 8.5} Yrs Serv.</span>
+                      </div>
+                      <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                        <span className="block text-[10px] font-bold text-slate-400 uppercase">{t("Home Distance", "गृह स्टेशन दूरी")}</span>
+                        <span className="font-semibold text-slate-800">{linkedPersonnel?.distance_from_home_station_km || 1250} km</span>
+                      </div>
+                      <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                        <span className="block text-[10px] font-bold text-slate-400 uppercase">{t("Fitness Baseline", "शारीरिक तंदुरुस्ती")}</span>
+                        <span className="font-semibold text-emerald-700 font-mono">SHAPE-1 (BMI: {linkedPersonnel?.body_mass_index || 23.8})</span>
+                      </div>
                     </div>
-                    <div>
-                      <span className="block text-slate-400 text-[10px] uppercase font-bold">Leave Backlog</span>
-                      <strong className="text-red-700 font-bold">{linkedPersonnel?.leave_backlog_days || 28} Days</strong>
+
+                    {/* Grid 2: Shift, Rest & Workload Telemetry */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                      <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                        <span className="block text-[10px] font-bold text-slate-400 uppercase">{t("Daily Duty Shift", "दैनिक ड्यूटी पाली")}</span>
+                        <span className="font-bold text-slate-900">{linkedPersonnel?.duty_hours_daily || selectedCase?.duty_hours_daily || 10.0}h / day</span>
+                      </div>
+                      <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                        <span className="block text-[10px] font-bold text-slate-400 uppercase">{t("Rest Allocation", "विश्राम आवंटन")}</span>
+                        <span className="font-bold text-slate-900">{linkedPersonnel?.rest_hours_daily || selectedCase?.rest_hours_daily || 6.5}h / day</span>
+                      </div>
+                      <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                        <span className="block text-[10px] font-bold text-slate-400 uppercase">{t("Monthly Overtime", "मासिक ओवरटाइम")}</span>
+                        <span className="font-bold text-amber-700">{linkedPersonnel?.overtime_hours_monthly || 24}h / month</span>
+                      </div>
+                      <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                        <span className="block text-[10px] font-bold text-slate-400 uppercase">{t("Consec. Night Shifts", "लगातार रात्रिकालीन ड्यूटी")}</span>
+                        <span className="font-bold text-red-700">{linkedPersonnel?.consecutive_night_duty_days || 4} Days</span>
+                      </div>
+                    </div>
+
+                    {/* Grid 3: Leave & Family Welfare Telemetry */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                      <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                        <span className="block text-[10px] font-bold text-slate-400 uppercase">{t("Leave Backlog", "अवकाश बकाया")}</span>
+                        <span className="font-bold text-red-700 text-sm">{linkedPersonnel?.leave_backlog_days || 32} Days</span>
+                      </div>
+                      <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                        <span className="block text-[10px] font-bold text-slate-400 uppercase">{t("Days Since Last Rest", "अंतिम विश्राम के बाद दिन")}</span>
+                        <span className="font-bold text-amber-700 text-sm">{linkedPersonnel?.days_since_last_leave || 165} Days</span>
+                      </div>
+                      <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                        <span className="block text-[10px] font-bold text-slate-400 uppercase">{t("Family Separation", "परिवार अलगाव अवधि")}</span>
+                        <span className="font-bold text-indigo-800 text-sm">{linkedPersonnel?.family_separation_months || 14} Months</span>
+                      </div>
+                      <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                        <span className="block text-[10px] font-bold text-slate-400 uppercase">{t("Unit Shortfall / Stagnation", "यूनिट कमी / पदोन्नति ठहराव")}</span>
+                        <span className="font-semibold text-slate-800">{linkedPersonnel?.unit_manning_shortfall_pct || 18.5}% shortfall • {linkedPersonnel?.promotion_stagnation_years || 2.5}y stag.</span>
+                      </div>
                     </div>
                   </div>
 
