@@ -1,16 +1,15 @@
 export function getApiBase(): string {
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
   if (typeof window !== 'undefined') {
-    if (process.env.NEXT_PUBLIC_API_URL) {
-      return process.env.NEXT_PUBLIC_API_URL;
-    }
     const proto = window.location.protocol;
     const host = window.location.hostname;
-    if (window.location.port === '3000') {
+    if (host === 'localhost' || host === '127.0.0.1') {
       return `${proto}//${host}:8000/api`;
     }
-    return `${proto}//${window.location.host}/api`;
   }
-  return process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api';
+  return 'https://sentinel-welfare-sih2026.onrender.com/api';
 }
 
 
