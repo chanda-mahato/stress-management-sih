@@ -311,10 +311,10 @@ export const P2PCallModal: React.FC<P2PCallModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="w-full max-w-xl bg-white border border-slate-300 rounded-2xl flex flex-col overflow-hidden shadow-2xl">
+      <div className="w-full max-w-xl bg-white border border-slate-300 rounded-2xl flex flex-col overflow-hidden shadow-2xl max-h-[90vh]">
         
         {/* Header */}
-        <div className="p-3.5 bg-[#0a2540] text-white flex items-center justify-between">
+        <div className="p-3.5 bg-[#0a2540] text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
             <span className="font-bold text-xs">
@@ -331,7 +331,7 @@ export const P2PCallModal: React.FC<P2PCallModalProps> = ({
 
         {/* SETUP SCREEN */}
         {!isCalling ? (
-          <div className="p-5 sm:p-6 space-y-5">
+          <div className="p-5 sm:p-6 space-y-5 overflow-y-auto max-h-[calc(90vh-50px)]">
             <div className="text-center space-y-1">
               <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-200 text-[#003366] flex items-center justify-center mx-auto">
                 <Video className="w-6 h-6" />
@@ -430,6 +430,17 @@ export const P2PCallModal: React.FC<P2PCallModalProps> = ({
                   />
                 </div>
               </div>
+            </div>
+
+            {/* PRIMARY CALL ACTION BUTTON - PLACED DIRECTLY BELOW INPUTS FOR HIGH VISIBILITY */}
+            <div className="pt-1">
+              <button
+                onClick={startCall}
+                className="w-full py-3.5 bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-sm rounded-xl flex items-center justify-center gap-2 transition shadow-md cursor-pointer active:scale-[0.99]"
+              >
+                <Phone className="w-5 h-5 text-emerald-200 animate-bounce" />
+                <span>{t("🚨 Ring Target & Start 1:1 Video Call (+91 " + clean2 + ")", "🚨 कॉल मिलाएं एवं लाइव वीडियो शुरू करें (+91 " + clean2 + ")")}</span>
+              </button>
             </div>
 
             {/* WHY IS THIS CALL SAFER FOR PRIVACY THAN A NORMAL PHONE CALL */}
